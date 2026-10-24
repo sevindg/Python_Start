@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Start — школа юных программистов</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script>
+/* ======================================================================
+   НАСТРОЙКИ — ЗДЕСЬ МОЖНО МЕНЯТЬ
+   ====================================================================== */
+
+/* 1) Вход учителя */
+const TEACHER = { login: 'seva', password: '123456789' };
+
+/* 2) Общая база Firebase (см. «Инструкция.txt»).
+      Пока здесь null — сайт работает в ДЕМО-режиме: всё хранится только в этом браузере.
+      Вставьте вместо null объект настроек из консоли Firebase, например:
+      const FIREBASE_CONFIG = {
+        apiKey: "AIza...",
+        authDomain: "my-school.firebaseapp.com",
+        projectId: "my-school",
+        storageBucket: "my-school.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abcdef"
+      };
+*/
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDcaDeWMPxk5mfdgckcmLt6numCSzOJ-oM",
+  authDomain: "python-start-50f94.firebaseapp.com",
+  projectId: "python-start-50f94",
+  storageBucket: "python-start-50f94.firebasestorage.app",
+  messagingSenderId: "594288198527",
+  appId: "1:594288198527:web:d40ed2ca8de0442168504a"
+};
+
+/* 3) Сколько уроков в курсе */
+const LESSONS_COUNT = 20;
+
+/* 4) Как читать прогресс из тренажёров.
+      Работает, когда LMS и тренажёры лежат на одном сайте (sevindg.github.io).
+      match — часть ссылки на задание, key — ключ, под которым тренажёр сохраняет прогресс. */
+const TRACKERS = [
+  { match: 'Python_Start_1_1', key: 'python_kids_trainer_progress_v2',
+    read: d => ({ done: (d.completedTaskIds || []).length, total: 8, xp: d.xp || 0 }) },
+  { match: 'Python_Start_1_2', key: 'turtle_trainer_lesson1_v1',
+    read: d => ({ done: Object.keys(d.done || {}).length, total: 13, xp: d.xp || 0 }) },
+];
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#eef3f9; --card:#fff; --ink:#1e2a45; --muted:#7a869f; --line:#e3e9f2;
+  --green:#12b886; --green-d:#0c9a70; --green-l:#e6f8f1;
+  --yellow:#ffc53d; --yellow-l:#fff6dc; --purple:#7c4dff; --purple-l:#f1ebff;
+  --red:#f03e3e; --red-l:#fff0f0; --blue:#3b82f6; --blue-l:#eaf2ff; --gray:#c3cbd8;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+button,input,select{font-family:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.muted{color:var(--muted)}
+.card{background:var(--card);border-radius:20px;box-shadow:0 2px 0 rgba(30,42,69,.04),0 8px 24px rgba(30,42,69,.06)}
+
+/* header */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto}
+.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#20c997,#0ca678);display:grid;place-items:center;box-shadow:0 4px 12px rgba(18,184,134,.35);font-size:24px}
+.brand b{font-size:20px;font-weight:900;display:block}
+.brand span{font-size:12.5px;color:var(--muted)}
+.who{display:flex;align-items:center;gap:8px;background:#f3f5fa;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px;font-weight:800;font-size:14px}
+.who i{width:30px;height:30px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-style:normal}
+.pill{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:12px;font-weight:800;font-size:14px;color:var(--ink);white-space:nowrap}
+.pill:hover{background:#f7f9fc}
+.pill.on{background:var(--yellow);border-color:#f5b400;color:#3a2a00}
+main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+.btn{border:0;border-radius:14px;padding:13px 20px;font-weight:900;font-size:15.5px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.15s;text-decoration:none}
+.btn:active{transform:translateY(1px)}
+.btn.green{background:linear-gradient(180deg,#20c997,#0ca678);color:#fff;box-shadow:0 4px 0 #087f5b}
+.btn.purple{background:linear-gradient(180deg,#9775fa,#7048e8);color:#fff;box-shadow:0 4px 0 #5f3dc4}
+.btn.white{background:#fff;color:var(--ink);border:2px solid var(--line)}
+.btn.red{background:var(--red-l);color:var(--red);border:1px solid #ffc9c9}
+.btn:hover{filter:brightness(1.04)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.banner{display:flex;gap:12px;align-items:flex-start;background:var(--yellow-l);border:1px solid #ffe08a;border-radius:16px;padding:12px 16px;margin-bottom:18px;font-size:14.5px;line-height:1.45}
+
+/* login */
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 20% 10%,#d3f9d8 0,transparent 40%),radial-gradient(circle at 90% 90%,#e5dbff 0,transparent 40%),var(--bg)}
+.login{width:100%;max-width:430px;padding:28px}
+.login h1{margin:10px 0 2px;font-size:26px;text-align:center}
+.login .sub{text-align:center;color:var(--muted);margin-bottom:18px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:#f3f5fa;border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
+.seg button{border:0;background:transparent;padding:10px;border-radius:11px;font-weight:800;color:#5b6784;font-size:14.5px}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(30,42,69,.1)}
+label.f{display:block;font-weight:800;font-size:13.5px;margin:10px 0 4px}
+.inp{width:100%;font-size:16px;border:2px solid var(--line);border-radius:12px;padding:11px 13px;font-weight:700;color:var(--ink);background:#fff;outline:none}
+.inp:focus{border-color:#96e2c7}
+.login .btn{width:100%;margin-top:18px}
+.err{color:var(--red);font-weight:800;font-size:14px;margin-top:10px;min-height:20px}
+.hint{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.4}
+
+/* student */
+.hello{display:flex;align-items:center;gap:18px;padding:20px 22px;margin-bottom:22px;flex-wrap:wrap}
+.hello h2{margin:0;font-size:26px}
+.hello p{margin:4px 0 0;color:#4b5774}
+.hello .grow{flex:1;min-width:220px}
+.bar{height:12px;background:#eef2f8;border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#20c997,#0ca678);border-radius:9px;transition:width .4s}
+h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.tile{position:relative;text-align:left;border:2px solid var(--line);background:#fff;border-radius:18px;padding:14px 14px 16px;min-height:128px;display:flex;flex-direction:column;gap:6px;transition:.15s;color:var(--ink)}
+.tile .num{width:38px;height:38px;border-radius:12px;background:var(--green-l);color:var(--green-d);display:grid;place-items:center;font-weight:900;font-size:17px}
+.tile .tt{font-weight:800;font-size:15px;line-height:1.25}
+.tile .st{margin-top:auto;font-size:12px;font-weight:900;letter-spacing:.03em;color:var(--green-d)}
+.tile.open:hover{transform:translateY(-2px);border-color:#96e2c7}
+.tile.cur{background:linear-gradient(160deg,#20c997,#0ca678);border-color:transparent;color:#fff;box-shadow:0 6px 0 #087f5b,0 10px 24px rgba(18,184,134,.35)}
+.tile.cur .num{background:#fff;color:var(--green-d)}
+.tile.cur .st{color:#fff}
+.tile.cur::after{content:'НОВЫЙ';position:absolute;top:10px;right:10px;background:var(--yellow);color:#3a2a00;font-size:10px;font-weight:900;padding:3px 7px;border-radius:999px;letter-spacing:.06em}
+.tile.sel{outline:4px solid rgba(255,197,61,.8);outline-offset:2px}
+.tile.locked{background:#f1f3f7;border-color:#e4e8ef;color:#9aa4b6;cursor:not-allowed}
+.tile.locked .num{background:#e4e8ef;color:#9aa4b6}
+.tile.locked .st{color:#9aa4b6}
+.tile .lock{position:absolute;top:12px;right:12px;font-size:18px;filter:grayscale(1);opacity:.7}
+.panel{grid-column:1/-1;background:#fff;border:2px solid #b2ecd9;border-radius:20px;padding:18px 20px;animation:slide .28s ease-out;box-shadow:0 10px 30px rgba(18,184,134,.12)}
+@keyframes slide{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+.panel h4{margin:0 0 4px;font-size:20px}
+.panel .acts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
+.panel .btn{min-width:200px}
+.prog{background:rgba(255,255,255,.25);border-radius:8px;padding:2px 8px;font-size:13px}
+.btn.white .prog,.btn.disabled .prog{background:var(--green-l);color:var(--green-d)}
+.soon{border:2px dashed var(--line);color:var(--muted);background:#fafbfd;box-shadow:none;cursor:default}
+
+/* teacher */
+.tbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 18px;margin-bottom:18px}
+.stat{background:#f6f8fc;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-weight:800;font-size:14px}
+.stat b{color:var(--green-d)}
+.save-st{font-size:13px;font-weight:800;color:var(--muted);margin-left:auto}
+.lrow{margin-bottom:10px;overflow:hidden}
+.lhead{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;flex-wrap:wrap}
+.lhead .num{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:900;background:#e4e8ef;color:#7a869f;flex:none}
+.lrow.isopen .lhead .num{background:var(--green-l);color:var(--green-d)}
+.lrow.iscur .lhead .num{background:var(--green);color:#fff}
+.lhead .tt{font-weight:800;font-size:16px;flex:1;min-width:160px}
+.badge{font-size:11.5px;font-weight:900;padding:4px 9px;border-radius:999px;letter-spacing:.03em;white-space:nowrap}
+.b-open{background:var(--green-l);color:var(--green-d);border:1px solid #b2ecd9}
+.b-lock{background:#f1f3f7;color:#7a869f;border:1px solid var(--line)}
+.b-cur{background:var(--yellow);color:#3a2a00}
+.tog{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-weight:800;font-size:13px;color:#4b5774;white-space:nowrap}
+.tog:hover{background:#f7f9fc}
+.chev{transition:.2s;color:var(--muted);font-size:14px}
+.lrow.exp .chev{transform:rotate(180deg)}
+.lbody{border-top:1px solid var(--line);padding:14px 16px 16px;background:#fbfcfe}
+.brow{display:grid;grid-template-columns:150px 1fr 1.6fr auto auto;gap:8px;align-items:center;margin-bottom:8px}
+.brow .inp,.lbody .inp{font-size:14px;padding:8px 10px;border-radius:10px}
+.brow select{font-size:14px;padding:8px;border:2px solid var(--line);border-radius:10px;background:#fff;font-weight:700;color:var(--ink)}
+.icob{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-size:15px;text-decoration:none;color:var(--ink)}
+.icob:hover{background:#f7f9fc}
+.icob.del:hover{background:var(--red-l);border-color:#ffc9c9}
+.icob.off{opacity:.35;pointer-events:none}
+.brow-h{display:grid;grid-template-columns:150px 1fr 1.6fr 84px;gap:8px;font-size:12px;font-weight:900;color:var(--muted);margin:12px 0 6px;letter-spacing:.04em}
+.add{border:2px dashed #b2ecd9;background:var(--green-l);color:var(--green-d);border-radius:12px;padding:9px 14px;font-weight:900;font-size:14px}
+
+.slist{padding:6px 0}
+.srow{display:grid;grid-template-columns:36px minmax(160px,1.1fr) minmax(200px,2fr) 120px 40px;gap:14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+.srow.h{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.04em;padding-top:14px;padding-bottom:10px}
+.sname{font-weight:800;font-size:15.5px}
+.spass{font-size:13px;color:#4b5774;margin-top:2px}
+.spass code{background:var(--yellow-l);border:1px solid #ffe08a;border-radius:6px;padding:1px 6px;font-weight:800;color:#8a5a00;font-family:ui-monospace,Consolas,monospace}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{font-size:11.5px;font-weight:800;background:#f3f5fa;border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#4b5774}
+.chip.done{background:var(--green-l);border-color:#b2ecd9;color:var(--green-d)}
+.pct{font-weight:900;font-size:13px;color:var(--green-d);margin-bottom:4px}
+.seen{font-size:12.5px;color:var(--muted)}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.search{max-width:280px}
+
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1e2a45;color:#fff;padding:12px 18px;border-radius:14px;font-weight:800;z-index:70;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slide .25s}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
+.loading{min-height:60vh;display:grid;place-items:center;color:var(--muted);font-weight:800}
+
+@media (max-width:800px){
+  .brow{grid-template-columns:1fr 1fr;}
+  .brow .url{grid-column:1/-1}
+  .brow-h{display:none}
+  .srow{grid-template-columns:1fr;gap:6px}
+  .srow.h{display:none}
+  .srow .n{display:none}
+}
+@media (max-width:560px){
+  main{padding:14px 12px 40px}
+  .top{padding:10px 12px}
+  .brand span{display:none}
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .panel .btn{min-width:0;width:100%}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">Загрузка…</div></div>
+<canvas id="confetti"></canvas>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https?:\/\//i.test(String(u || '').trim()) ? String(u).trim() : '';
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k){ try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+/* ======================================================================
+   УРОКИ ПО УМОЛЧАНИЮ
+   ====================================================================== */
+function defaultConfig(){
+  const lessons = [];
+  for (let i = 1; i <= LESSONS_COUNT; i++) {
+    lessons.push(i === 1 ? {
+      title: 'Урок 1. Первый шаг в программирование',
+      open: true,
+      buttons: [
+        {kind:'pres', label:'Презентация', url:'https://sevindg.github.io/Python_Start_1/#s1'},
+        {kind:'task', label:'Задание 1. Питончик', url:'https://sevindg.github.io/Python_Start_1_1/Питончик.html'},
+        {kind:'task', label:'Задание 2. Черепашка в деле', url:'https://sevindg.github.io/Python_Start_1_2/'}
+      ]
+    } : {
+      title: `Урок ${i}`,
+      open: false,
+      buttons: [
+        {kind:'pres', label:'Презентация', url:''},
+        {kind:'task', label:'Задание 1', url:''},
+        {kind:'task', label:'Задание 2', url:''}
+      ]
+    });
+  }
+  return {lessons};
+}
+function normalizeConfig(c){
+  const d = defaultConfig();
+  if (!c || !Array.isArray(c.lessons)) return d;
+  while (c.lessons.length < LESSONS_COUNT) c.lessons.push(d.lessons[c.lessons.length]);
+  c.lessons.forEach(l => { l.buttons = Array.isArray(l.buttons) ? l.buttons : []; l.title = l.title || ''; l.open = !!l.open; });
+  return c;
+}
+
+/* ======================================================================
+   БАЗА ДАННЫХ: Firebase или демо (localStorage)
+   ====================================================================== */
+function makeLocalDB(){
+  const CK = 'lms_demo_config', SK = 'lms_demo_students';
+  const subs = {config:new Set(), students:new Set()};
+  const fire = () => { subs.config.forEach(cb => cb(store.get(CK, null))); const s = store.get(SK, {}); subs.students.forEach(cb => cb(Object.entries(s).map(([id, v]) => ({id, ...v})))); };
+  window.addEventListener('storage', e => { if (e.key === CK || e.key === SK) fire(); });
+  return {
+    demo: true,
+    async getConfig(){ return store.get(CK, null); },
+    async saveConfig(c){ store.set(CK, c); fire(); },
+    onConfig(cb){ subs.config.add(cb); cb(store.get(CK, null)); return () => subs.config.delete(cb); },
+    async getStudent(id){ return store.get(SK, {})[id] || null; },
+    async setStudent(id, data){ const s = store.get(SK, {}); s[id] = Object.assign(s[id] || {}, data); store.set(SK, s); fire(); },
+    async deleteStudent(id){ const s = store.get(SK, {}); delete s[id]; store.set(SK, s); fire(); },
+    onStudents(cb){ subs.students.add(cb); const s = store.get(SK, {}); cb(Object.entries(s).map(([id, v]) => ({id, ...v}))); return () => subs.students.delete(cb); }
+  };
+}
+function makeFirebaseDB(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.firestore();
+  const cfgRef = db.collection('lms').doc('config'), st = db.collection('students');
+  return {
+    demo: false,
+    async getConfig(){ const s = await cfgRef.get(); return s.exists ? s.data() : null; },
+    async saveConfig(c){ await cfgRef.set(JSON.parse(JSON.stringify(c))); },
+    onConfig(cb){ return cfgRef.onSnapshot(s => cb(s.exists ? s.data() : null), e => toast('Нет связи с базой: ' + e.message)); },
+    async getStudent(id){ const s = await st.doc(id).get(); return s.exists ? s.data() : null; },
+    async setStudent(id, data){ await st.doc(id).set(JSON.parse(JSON.stringify(data)), {merge:true}); },
+    async deleteStudent(id){ await st.doc(id).delete(); },
+    onStudents(cb){ return st.onSnapshot(q => cb(q.docs.map(d => ({id:d.id, ...d.data()}))), e => toast('Нет связи с базой: ' + e.message)); }
+  };
+}
+let DB;
+try { DB = (FIREBASE_CONFIG && window.firebase) ? makeFirebaseDB() : makeLocalDB(); }
+catch (e) { console.error(e); DB = makeLocalDB(); }
+
+/* ======================================================================
+   ПРОГРЕСС ИЗ ТРЕНАЖЁРОВ
+   ====================================================================== */
+const pkey = url => String(url).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 300);
+function trackerFor(url){
+  const u = decodeURIComponentSafe(url);
+  return TRACKERS.find(t => u.includes(t.match)) || null;
+}
+function decodeURIComponentSafe(u){ try { return decodeURI(u); } catch (e) { return u; } }
+function readTracker(url){
+  const t = trackerFor(url);
+  if (t) {
+    try { const raw = localStorage.getItem(t.key); if (raw) { const r = t.read(JSON.parse(raw)); if (r && r.total) return r; } } catch (e) {}
+    return null;
+  }
+  /* общий формат для будущих тренажёров: localStorage['lms_progress'] = {"часть_ссылки": {done, total, xp}} */
+  const g = store.get('lms_progress', null);
+  if (g && typeof g === 'object') for (const k in g) if (k && decodeURIComponentSafe(url).includes(k) && g[k] && g[k].total) return g[k];
+  return null;
+}
+function taskList(cfg, onlyOpen){
+  const out = [];
+  cfg.lessons.forEach((l, li) => {
+    if (onlyOpen && !l.open) return;
+    l.buttons.forEach(b => { if (b.kind === 'task' && safeUrl(b.url)) out.push({li, b}); });
+  });
+  return out;
+}
+function studentStats(st, cfg){
+  const items = taskList(cfg, true).map(({li, b}) => {
+    const p = (st.progress || {})[pkey(b.url)] || {};
+    const tracked = !!trackerFor(b.url) || (p.total > 0);
+    let frac, text;
+    if (p.total > 0) { frac = Math.min(1, p.done / p.total); text = `${p.done}/${p.total}`; }
+    else if (tracked) { frac = 0; text = p.opened ? '0 · открыто' : '—'; }
+    else { frac = p.opened ? 1 : 0; text = p.opened ? '✓ открыто' : '—'; }
+    return {li, label:b.label, frac, text};
+  });
+  const pct = items.length ? Math.round(items.reduce((s, x) => s + x.frac, 0) / items.length * 100) : 0;
+  return {pct, items};
+}
+
+/* ======================================================================
+   СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+   ====================================================================== */
+const SESSION_KEY = 'lms_session_v1';
+const A = {
+  session: store.get(SESSION_KEY, null),
+  cfg: null, me: null, students: [],
+  view: 'lessons', sel: null, exp: {}, search: '',
+  unsub: [], dirty: false, saveTimer: 0, openCount: null
+};
+const studentId = (last, first) => (last.trim() + '_' + first.trim()).toLowerCase().replace(/ё/g, 'е').replace(/[\s/\\.#$\[\]]+/g, '_');
+const cap = s => s.trim().replace(/\s+/g, ' ').replace(/(^|[\s-])(\S)/g, (m, a, b) => a + b.toUpperCase());
+
+function toast(msg){
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+function confetti(){
+  const c = $('#confetti'), x = c.getContext('2d'); c.width = innerWidth; c.height = innerHeight;
+  const cols = ['#20c997', '#ffc53d', '#7c4dff', '#ff6b6b', '#4dabf7', '#ff922b'];
+  const ps = Array.from({length:140}, () => ({x:innerWidth / 2, y:innerHeight / 3, vx:(Math.random() - .5) * 16, vy:-Math.random() * 13 - 3, s:Math.random() * 8 + 5, c:cols[Math.floor(Math.random() * cols.length)], r:Math.random() * 6, vr:(Math.random() - .5) * .4}));
+  let f = 0;
+  (function tick(){
+    x.clearRect(0, 0, c.width, c.height);
+    ps.forEach(p => { p.vy += .32; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.r += p.vr; x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = p.c; x.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); x.restore(); });
+    if (++f < 160) requestAnimationFrame(tick); else x.clearRect(0, 0, c.width, c.height);
+  })();
+}
+function stopSubs(){ A.unsub.forEach(u => { try { u(); } catch (e) {} }); A.unsub = []; }
+function logout(){ stopSubs(); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; renderLogin(); }
+
+/* ======================================================================
+   ВХОД
+   ====================================================================== */
+let loginRole = 'student';
+function renderLogin(){
+  $('#app').innerHTML = `
+  <div class="login-wrap"><div class="card login">
+    <div style="text-align:center;font-size:54px">🐍</div>
+    <h1>Python Start</h1>
+    <div class="sub">Школа юных программистов</div>
+    <div class="seg"><button data-role="student" class="${loginRole === 'student' ? 'on' : ''}">🎒 Я ученик</button><button data-role="teacher" class="${loginRole === 'teacher' ? 'on' : ''}">🧑‍🏫 Я учитель</button></div>
+    <form id="lf" autocomplete="off">
+      ${loginRole === 'student' ? `
+        <label class="f" for="ln">Фамилия</label><input class="inp" id="ln" maxlength="40" required placeholder="Иванов">
+        <label class="f" for="fn">Имя</label><input class="inp" id="fn" maxlength="40" required placeholder="Иван">
+        <label class="f" for="pw">Пароль</label><input class="inp" id="pw" type="password" maxlength="40" required placeholder="Придумай или введи свой пароль">
+        <div class="hint">Первый раз здесь? Впиши фамилию, имя и придумай пароль — аккаунт создастся сам. Запомни пароль!</div>
+      ` : `
+        <label class="f" for="tl">Логин</label><input class="inp" id="tl" required autocomplete="username">
+        <label class="f" for="pw">Пароль</label><input class="inp" id="pw" type="password" required autocomplete="current-password">
+      `}
+      <div class="err" id="lerr"></div>
+      <button class="btn green" type="submit" id="lbtn">Войти →</button>
+    </form>
+  </div></div>`;
+  document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { loginRole = b.dataset.role; renderLogin(); });
+  $('#lf').onsubmit = async e => {
+    e.preventDefault();
+    const err = $('#lerr'); err.textContent = '';
+    const pw = $('#pw').value;
+    if (loginRole === 'teacher') {
+      if ($('#tl').value.trim() === TEACHER.login && pw === TEACHER.password) { A.session = {role:'teacher'}; store.set(SESSION_KEY, A.session); start(); }
+      else err.textContent = 'Неверный логин или пароль';
+      return;
+    }
+    const last = cap($('#ln').value), first = cap($('#fn').value);
+    if (!last || !first) { err.textContent = 'Впиши фамилию и имя'; return; }
+    if (pw.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+    $('#lbtn').disabled = true;
+    try {
+      const id = studentId(last, first), st = await DB.getStudent(id);
+      if (st && st.password !== pw) { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
+      if (!st) await DB.setStudent(id, {last, first, password:pw, created:Date.now(), lastSeen:Date.now(), progress:{}});
+      A.session = {role:'student', id}; store.set(SESSION_KEY, A.session);
+      if (!st) toast(`Добро пожаловать, ${first}! Аккаунт создан 🎉`);
+      start();
+    } catch (x) { err.textContent = 'Не удалось подключиться к базе. Проверь интернет.'; $('#lbtn').disabled = false; }
+  };
+}
+
+/* ======================================================================
+   ШАПКА
+   ====================================================================== */
+function header(){
+  const t = A.session.role === 'teacher';
+  const name = t ? 'Учитель' : (A.me ? A.me.first + ' ' + A.me.last : '');
+  return `<header class="top">
+    <div class="brand"><div class="logo">🐍</div><div><b>Python Start</b><span>Школа юных программистов</span></div></div>
+    ${t ? `<button class="pill ${A.view === 'students' ? 'on' : ''}" id="toggleStudents">👥 Список учеников</button>` : ''}
+    <div class="who"><i>${t ? '🧑‍🏫' : '🎒'}</i>${esc(name)}</div>
+    <button class="pill" id="logout">Выйти</button>
+  </header>`;
+}
+function bindHeader(){
+  $('#logout').onclick = () => { if (confirm('Выйти из аккаунта?')) logout(); };
+  const ts = $('#toggleStudents');
+  if (ts) ts.onclick = () => { A.view = A.view === 'students' ? 'lessons' : 'students'; renderTeacher(); };
+}
+const demoBanner = () => DB.demo ? `<div class="banner"><span style="font-size:22px">⚠️</span><div><b>Демо-режим.</b> База Firebase не подключена, поэтому уроки и ученики сохраняются только в этом браузере. Чтобы ученики видели уроки на своих компьютерах, подключите Firebase по инструкции из файла «Инструкция.txt».</div></div>` : '';
+
+/* ======================================================================
+   УЧЕНИК
+   ====================================================================== */
+function curLesson(cfg){ let k = -1; cfg.lessons.forEach((l, i) => { if (l.open) k = i; }); return k; }
+
+function renderStudent(){
+  const cfg = A.cfg, me = A.me; if (!cfg || !me) return;
+  const cur = curLesson(cfg), stats = studentStats(me, cfg), openN = cfg.lessons.filter(l => l.open).length;
+  const scrollY = window.scrollY;
+  $('#app').innerHTML = header() + `<main>
+    <div class="card hello">
+      <div style="font-size:52px">👋</div>
+      <div class="grow"><h2>Привет, ${esc(me.first)}!</h2><p>${cur >= 0 ? `Сейчас у тебя открыт <b>${esc(cfg.lessons[cur].title)}</b>. Нажми на урок, чтобы открыть презентацию и задания.` : 'Учитель скоро откроет первый урок.'}</p></div>
+      <div style="min-width:220px"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:14px;margin-bottom:6px"><span>Мой прогресс</span><span style="color:var(--green-d)">${stats.pct}%</span></div><div class="bar"><i style="width:${stats.pct}%"></i></div><div class="muted" style="font-size:12.5px;margin-top:6px">Открыто уроков: ${openN} из ${cfg.lessons.length}</div></div>
+    </div>
+    <h3 class="sec">📚 Мои уроки</h3>
+    <div class="grid" id="grid">
+      ${cfg.lessons.map((l, i) => `
+        <button class="tile ${l.open ? 'open' : 'locked'} ${i === cur ? 'cur' : ''} ${i === A.sel ? 'sel' : ''}" data-i="${i}" ${l.open ? '' : 'aria-disabled="true"'}>
+          ${l.open ? '' : '<span class="lock">🔒</span>'}
+          <span class="num">${i + 1}</span>
+          <span class="tt">${esc(l.title || 'Урок ' + (i + 1))}</span>
+          <span class="st">${!l.open ? 'ЗАКРЫТ' : i === cur ? '▶ ТЕКУЩИЙ УРОК' : '✓ ОТКРЫТ'}</span>
+        </button>`).join('')}
+    </div>
+  </main>`;
+  bindHeader();
+  document.querySelectorAll('.tile').forEach(t => t.onclick = () => {
+    const i = +t.dataset.i;
+    if (!cfg.lessons[i].open) { toast('🔒 Этот урок пока закрыт — учитель откроет его позже'); return; }
+    A.sel = A.sel === i ? null : i; renderStudent();
+  });
+  placePanel();
+  window.scrollTo(0, scrollY);
+}
+function placePanel(){
+  const old = document.querySelector('.panel'); if (old) old.remove();
+  if (A.sel == null || !A.cfg.lessons[A.sel] || !A.cfg.lessons[A.sel].open) return;
+  const tiles = [...document.querySelectorAll('.tile')], t = tiles[A.sel];
+  let last = t; for (const x of tiles) if (x.offsetTop === t.offsetTop) last = x;
+  const l = A.cfg.lessons[A.sel], prog = A.me.progress || {};
+  const p = document.createElement('div'); p.className = 'panel';
+  const btns = l.buttons.map((b, bi) => {
+    const u = safeUrl(b.url);
+    if (!u) return `<span class="btn soon">${b.kind === 'pres' ? '📊' : '🧩'} ${esc(b.label)} · скоро</span>`;
+    const pr = prog[pkey(u)];
+    const badge = b.kind === 'task' && pr && pr.total ? `<span class="prog">${pr.done}/${pr.total}</span>` : '';
+    return `<a class="btn ${b.kind === 'pres' ? 'purple' : 'green'}" href="${esc(u)}" target="_blank" rel="noopener" data-bi="${bi}">${b.kind === 'pres' ? '📊' : '🧩'} ${esc(b.label)} ${badge}</a>`;
+  }).join('');
+  p.innerHTML = `<h4>${esc(l.title)}</h4><div class="muted">Сначала посмотри презентацию, потом выполни задания. Они откроются в новой вкладке.</div><div class="acts">${btns || '<span class="muted">Материалы появятся позже</span>'}</div>`;
+  last.after(p);
+  p.querySelectorAll('a[data-bi]').forEach(a => a.addEventListener('click', () => markOpened(l.buttons[+a.dataset.bi].url)));
+}
+async function markOpened(url){
+  const k = pkey(url), prog = Object.assign({}, A.me.progress || {});
+  prog[k] = Object.assign({}, prog[k], {opened:true, at:Date.now()});
+  A.me.progress = prog;
+  try { await DB.setStudent(A.session.id, {progress:prog, lastSeen:Date.now()}); } catch (e) {}
+}
+async function syncProgress(){
+  if (!A.session || A.session.role !== 'student' || !A.me || !A.cfg) return;
+  const prog = Object.assign({}, A.me.progress || {});
+  let changed = false;
+  for (const {b} of taskList(A.cfg, false)) {
+    const r = readTracker(b.url); if (!r) continue;
+    const k = pkey(b.url), old = prog[k] || {};
+    if (old.done !== r.done || old.total !== r.total || old.xp !== r.xp) { prog[k] = Object.assign({}, old, {done:r.done, total:r.total, xp:r.xp || 0, at:Date.now()}); changed = true; }
+  }
+  const stale = Date.now() - (A.me.lastSeen || 0) > 5 * 60 * 1000;
+  if (!changed && !stale) return;
+  A.me.progress = prog; A.me.lastSeen = Date.now();
+  try { await DB.setStudent(A.session.id, {progress:prog, lastSeen:A.me.lastSeen}); } catch (e) {}
+  if (changed) renderStudent();
+}
+window.addEventListener('focus', syncProgress);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncProgress(); });
+setInterval(() => { if (!document.hidden) syncProgress(); }, 30000);
+let rsT = 0;
+window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (A.session && A.session.role === 'student') placePanel(); }, 120); });
+
+/* ======================================================================
+   УЧИТЕЛЬ
+   ====================================================================== */
+function saveCfg(){
+  A.dirty = true; setSaveSt('Сохраняю…');
+  clearTimeout(A.saveTimer);
+  A.saveTimer = setTimeout(async () => {
+    try { await DB.saveConfig(A.cfg); A.dirty = false; setSaveSt('✓ Сохранено'); }
+    catch (e) { setSaveSt('⚠️ Не сохранилось'); toast('Не удалось сохранить: ' + e.message); }
+  }, 600);
+}
+function setSaveSt(t){ const s = $('#saveSt'); if (s) s.textContent = t; }
+
+function renderTeacher(){
+  if (!A.cfg) return;
+  const scrollY = window.scrollY;
+  $('#app').innerHTML = header() + `<main>${demoBanner()}${A.view === 'students' ? studentsView() : lessonsView()}</main>`;
+  bindHeader();
+  if (A.view === 'students') bindStudents(); else bindLessons();
+  window.scrollTo(0, scrollY);
+}
+
+function lessonsView(){
+  const cfg = A.cfg, cur = curLesson(cfg), next = cfg.lessons.findIndex(l => !l.open);
+  return `<div class="card tbar">
+      <button class="btn green" id="openNext" ${next < 0 ? 'disabled' : ''}>${next < 0 ? '✓ Все уроки открыты' : `🔓 Открыть следующий урок (${next + 1})`}</button>
+      <div class="stat">Открыто уроков: <b>${cfg.lessons.filter(l => l.open).length}</b> из ${cfg.lessons.length}</div>
+      <div class="stat">Учеников: <b>${A.students.length}</b></div>
+      <span class="save-st" id="saveSt">${A.dirty ? 'Сохраняю…' : ''}</span>
+    </div>
+    <h3 class="sec">📚 Все уроки <span class="muted" style="font-size:14px;font-weight:700">— нажми на урок, чтобы изменить название, кнопки и ссылки</span></h3>
+    ${cfg.lessons.map((l, i) => `
+      <div class="card lrow ${l.open ? 'isopen' : ''} ${i === cur ? 'iscur' : ''} ${A.exp[i] ? 'exp' : ''}" data-i="${i}">
+        <div class="lhead" data-act="exp">
+          <span class="num">${i + 1}</span>
+          <span class="tt">${esc(l.title || 'Урок ' + (i + 1))}</span>
+          ${i === cur ? '<span class="badge b-cur">ТЕКУЩИЙ</span>' : ''}
+          <span class="badge ${l.open ? 'b-open' : 'b-lock'}">${l.open ? '🔓 ОТКРЫТ' : '🔒 ЗАКРЫТ'}</span>
+          <button class="tog" data-act="toggle">${l.open ? 'Закрыть урок' : 'Открыть урок'}</button>
+          <span class="chev">▼</span>
+        </div>
+        ${A.exp[i] ? `<div class="lbody">
+          <label class="f" style="margin-top:0">Название урока</label>
+          <input class="inp" data-f="title" value="${esc(l.title)}" maxlength="120">
+          <div class="brow-h"><span>ТИП</span><span>НАЗВАНИЕ КНОПКИ</span><span>ССЫЛКА</span><span></span></div>
+          ${l.buttons.map((b, bi) => `
+            <div class="brow" data-bi="${bi}">
+              <select data-f="kind"><option value="pres" ${b.kind === 'pres' ? 'selected' : ''}>📊 Презентация</option><option value="task" ${b.kind !== 'pres' ? 'selected' : ''}>🧩 Задание</option></select>
+              <input class="inp" data-f="label" value="${esc(b.label)}" placeholder="Название кнопки" maxlength="80">
+              <input class="inp url" data-f="url" value="${esc(b.url)}" placeholder="https://...">
+              <a class="icob ${safeUrl(b.url) ? '' : 'off'}" href="${esc(safeUrl(b.url))}" target="_blank" rel="noopener" title="Проверить ссылку">↗</a>
+              <button class="icob del" data-act="del" title="Удалить кнопку">🗑</button>
+            </div>`).join('')}
+          <button class="add" data-act="add">＋ Добавить кнопку</button>
+        </div>` : ''}
+      </div>`).join('')}`;
+}
+function bindLessons(){
+  $('#openNext').onclick = () => {
+    const n = A.cfg.lessons.findIndex(l => !l.open); if (n < 0) return;
+    A.cfg.lessons[n].open = true; saveCfg(); renderTeacher();
+    toast(`Урок ${n + 1} открыт — ученики уже его видят 🎉`);
+  };
+  document.querySelectorAll('.lrow').forEach(row => {
+    const i = +row.dataset.i, l = A.cfg.lessons[i];
+    row.addEventListener('click', e => {
+      const act = e.target.closest('[data-act]'); if (!act) return;
+      const a = act.dataset.act;
+      if (a === 'exp') { if (e.target.closest('.lbody')) return; A.exp[i] = !A.exp[i]; renderTeacher(); }
+      else if (a === 'toggle') { e.stopPropagation(); l.open = !l.open; saveCfg(); renderTeacher(); }
+      else if (a === 'add') { l.buttons.push({kind:'task', label:`Задание ${l.buttons.filter(b => b.kind === 'task').length + 1}`, url:''}); saveCfg(); renderTeacher(); }
+      else if (a === 'del') {
+        const bi = +act.closest('.brow').dataset.bi;
+        if (!confirm(`Удалить кнопку «${l.buttons[bi].label}»?`)) return;
+        l.buttons.splice(bi, 1); saveCfg(); renderTeacher();
+      }
+    });
+    row.addEventListener('input', e => {
+      const f = e.target.dataset.f; if (!f) return;
+      if (f === 'title') { l.title = e.target.value; row.querySelector('.lhead .tt').textContent = l.title || 'Урок ' + (i + 1); }
+      else {
+        const b = l.buttons[+e.target.closest('.brow').dataset.bi];
+        b[f] = e.target.value;
+        if (f === 'url') { const a = e.target.closest('.brow').querySelector('a.icob'), u = safeUrl(b.url); a.href = u || '#'; a.classList.toggle('off', !u); }
+      }
+      saveCfg();
+    });
+  });
+}
+
+function fmtSeen(t){
+  if (!t) return '—';
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 2) return 'только что'; if (m < 60) return `${m} мин назад`;
+  const h = Math.round(m / 60); if (h < 24) return `${h} ч назад`;
+  return new Date(t).toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
+}
+function studentsView(){
+  const q = A.search.trim().toLowerCase();
+  const list = A.students.slice().sort((a, b) => (a.last + a.first).localeCompare(b.last + b.first, 'ru'))
+    .filter(s => !q || (s.last + ' ' + s.first).toLowerCase().includes(q));
+  return `<div class="card tbar">
+      <h3 class="sec" style="margin:0">👥 Список учеников</h3>
+      <div class="stat">Всего: <b>${A.students.length}</b></div>
+      <input class="inp search" id="search" placeholder="🔍 Поиск по имени" value="${esc(A.search)}">
+      <span class="save-st"></span>
+      <button class="pill" id="backLessons">← К урокам</button>
+    </div>
+    <div class="card slist">
+      ${list.length ? `<div class="srow h"><span class="n">№</span><span>УЧЕНИК / ПАРОЛЬ</span><span>ПРОГРЕСС ПО ОТКРЫТЫМ УРОКАМ</span><span>БЫЛ НА САЙТЕ</span><span></span></div>` : ''}
+      ${list.map((s, k) => {
+        const st = studentStats(s, A.cfg);
+        return `<div class="srow" data-id="${esc(s.id)}">
+          <span class="n muted" style="font-weight:900">${k + 1}</span>
+          <div><div class="sname">${esc(s.last)} ${esc(s.first)}</div><div class="spass">пароль: <code>${esc(s.password)}</code></div></div>
+          <div><div class="pct">${st.pct}%</div><div class="bar"><i style="width:${st.pct}%"></i></div>
+            <div class="chips">${st.items.map(it => `<span class="chip ${it.frac >= 1 ? 'done' : ''}" title="Урок ${it.li + 1}">У${it.li + 1} · ${esc(it.label)}: ${esc(it.text)}</span>`).join('')}</div></div>
+          <span class="seen">${fmtSeen(s.lastSeen)}</span>
+          <button class="icob del" data-act="delst" title="Удалить ученика">🗑</button>
+        </div>`;
+      }).join('') || `<div class="empty">${A.students.length ? 'Никого не нашлось' : 'Пока ни один ученик не зарегистрировался.<br>Ученики появятся здесь после первого входа.'}</div>`}
+    </div>`;
+}
+function bindStudents(){
+  $('#backLessons').onclick = () => { A.view = 'lessons'; renderTeacher(); };
+  const s = $('#search');
+  s.oninput = () => { A.search = s.value; renderTeacher(); const n = $('#search'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
+  document.querySelectorAll('[data-act="delst"]').forEach(b => b.onclick = async () => {
+    const id = b.closest('.srow').dataset.id, st = A.students.find(x => x.id === id);
+    if (!confirm(`Удалить ученика ${st.last} ${st.first}? Его прогресс пропадёт.`)) return;
+    await DB.deleteStudent(id); toast('Ученик удалён');
+  });
+}
+const teacherEditing = () => { const a = document.activeElement; return a && a.closest && a.closest('.lbody'); };
+
+/* ======================================================================
+   ЗАПУСК
+   ====================================================================== */
+function start(){
+  stopSubs();
+  $('#app').innerHTML = '<div class="loading">Загрузка…</div>';
+  const s = A.session;
+  if (!s) return renderLogin();
+  if (s.role === 'teacher') {
+    A.view = 'lessons';
+    let first = true;
+    A.unsub.push(DB.onConfig(c => {
+      if (!c && first) { A.cfg = defaultConfig(); DB.saveConfig(A.cfg).catch(() => {}); }
+      else if (c && !A.dirty && !teacherEditing()) A.cfg = normalizeConfig(c);
+      else if (!c && !A.cfg) A.cfg = defaultConfig();
+      first = false;
+      if (!teacherEditing()) renderTeacher();
+    }));
+    A.unsub.push(DB.onStudents(list => { A.students = list; if (A.cfg && !teacherEditing() && !(A.view === 'students' && document.activeElement && document.activeElement.id === 'search')) renderTeacher(); }));
+    return;
+  }
+  A.unsub.push(DB.onStudents(list => {
+    const me = list.find(x => x.id === s.id);
+    if (!me) { if (A.me) { toast('Аккаунт удалён учителем'); logout(); } return; }
+    const firstLoad = !A.me;
+    A.me = me;
+    if (A.cfg) { if (firstLoad) syncProgress(); renderStudent(); }
+  }));
+  A.unsub.push(DB.onConfig(c => {
+    A.cfg = normalizeConfig(c);
+    const n = A.cfg.lessons.filter(l => l.open).length;
+    if (A.openCount != null && n > A.openCount) {
+      const cur = curLesson(A.cfg); A.sel = cur;
+      toast(`🎉 Учитель открыл новый урок: ${A.cfg.lessons[cur].title}`); confetti();
+    }
+    A.openCount = n;
+    if (A.me) { renderStudent(); syncProgress(); }
+  }));
+  /* если ученика удалили, а подписка на список не пришла (демо без учеников) */
+  setTimeout(async () => { if (A.session && A.session.role === 'student' && !A.me) { const st = await DB.getStudent(s.id).catch(() => null); if (!st) logout(); } }, 4000);
+}
+start();
+</script>
+</body>
+</html>
