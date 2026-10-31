@@ -15,18 +15,7 @@
 /* 1) Вход учителя */
 const TEACHER = { login: 'seva', password: '123456789' };
 
-/* 2) Общая база Firebase (см. «Инструкция.txt»).
-      Пока здесь null — сайт работает в ДЕМО-режиме: всё хранится только в этом браузере.
-      Вставьте вместо null объект настроек из консоли Firebase, например:
-      const FIREBASE_CONFIG = {
-        apiKey: "AIza...",
-        authDomain: "my-school.firebaseapp.com",
-        projectId: "my-school",
-        storageBucket: "my-school.appspot.com",
-        messagingSenderId: "1234567890",
-        appId: "1:1234567890:web:abcdef"
-      };
-*/
+/* 2) Общая база Firebase (см. «Инструкция.txt»). */
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDcaDeWMPxk5mfdgckcmLt6numCSzOJ-oM",
   authDomain: "python-start-50f94.firebaseapp.com",
@@ -39,9 +28,7 @@ const FIREBASE_CONFIG = {
 /* 3) Сколько уроков в курсе */
 const LESSONS_COUNT = 20;
 
-/* 4) Как читать прогресс из тренажёров.
-      Работает, когда LMS и тренажёры лежат на одном сайте (sevindg.github.io).
-      match — часть ссылки на задание, key — ключ, под которым тренажёр сохраняет прогресс. */
+/* 4) Как читать прогресс из тренажёров. */
 const TRACKERS = [
   { match: 'Python_Start_1_1', key: 'python_kids_trainer_progress_v2',
     read: d => ({ done: (d.completedTaskIds || []).length, total: 8, xp: d.xp || 0 }) },
@@ -162,12 +149,13 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .icob{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-size:15px;text-decoration:none;color:var(--ink)}
 .icob:hover{background:#f7f9fc}
 .icob.del:hover{background:var(--red-l);border-color:#ffc9c9}
+.icob.edit:hover{background:var(--blue-l);border-color:#93c5fd}
 .icob.off{opacity:.35;pointer-events:none}
 .brow-h{display:grid;grid-template-columns:150px 1fr 1.6fr 84px;gap:8px;font-size:12px;font-weight:900;color:var(--muted);margin:12px 0 6px;letter-spacing:.04em}
 .add{border:2px dashed #b2ecd9;background:var(--green-l);color:var(--green-d);border-radius:12px;padding:9px 14px;font-weight:900;font-size:14px}
 
 .slist{padding:6px 0}
-.srow{display:grid;grid-template-columns:36px minmax(160px,1.1fr) minmax(200px,2fr) 120px 40px;gap:14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.srow{display:grid;grid-template-columns:36px minmax(160px,1.1fr) minmax(200px,2fr) 120px 80px;gap:14px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
 .srow:last-child{border-bottom:0}
 .srow.h{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.04em;padding-top:14px;padding-bottom:10px}
 .sname{font-weight:800;font-size:15.5px}
@@ -180,6 +168,20 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .seen{font-size:12.5px;color:var(--muted)}
 .empty{padding:40px 20px;text-align:center;color:var(--muted)}
 .search{max-width:280px}
+.sactions{display:flex;gap:6px;justify-content:flex-end}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(30,42,69,.5);backdrop-filter:blur(4px);z-index:50;display:grid;place-items:center;padding:20px;animation:fadein .2s}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:22px;padding:26px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slide .25s ease-out}
+.modal h3{margin:0 0 4px;font-size:22px;display:flex;align-items:center;gap:10px}
+.modal .msub{color:var(--muted);font-size:14px;margin-bottom:16px}
+.modal .actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.modal .actions .btn{flex:1;min-width:120px}
+.modal .genbtn{border:1px solid var(--line);background:#f7f9fc;border-radius:10px;padding:6px 10px;font-weight:800;font-size:12px;color:#4b5774;white-space:nowrap}
+.modal .genbtn:hover{background:#eef2f8}
+.pw-field{display:flex;gap:6px;align-items:stretch}
+.pw-field .inp{flex:1}
 
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1e2a45;color:#fff;padding:12px 18px;border-radius:14px;font-weight:800;z-index:70;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slide .25s}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
@@ -192,6 +194,7 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
   .srow{grid-template-columns:1fr;gap:6px}
   .srow.h{display:none}
   .srow .n{display:none}
+  .sactions{justify-content:flex-start}
 }
 @media (max-width:560px){
   main{padding:14px 12px 40px}
@@ -304,7 +307,6 @@ function readTracker(url){
     try { const raw = localStorage.getItem(t.key); if (raw) { const r = t.read(JSON.parse(raw)); if (r && r.total) return r; } } catch (e) {}
     return null;
   }
-  /* общий формат для будущих тренажёров: localStorage['lms_progress'] = {"часть_ссылки": {done, total, xp}} */
   const g = store.get('lms_progress', null);
   if (g && typeof g === 'object') for (const k in g) if (k && decodeURIComponentSafe(url).includes(k) && g[k] && g[k].total) return g[k];
   return null;
@@ -630,7 +632,10 @@ function studentsView(){
           <div><div class="pct">${st.pct}%</div><div class="bar"><i style="width:${st.pct}%"></i></div>
             <div class="chips">${st.items.map(it => `<span class="chip ${it.frac >= 1 ? 'done' : ''}" title="Урок ${it.li + 1}">У${it.li + 1} · ${esc(it.label)}: ${esc(it.text)}</span>`).join('')}</div></div>
           <span class="seen">${fmtSeen(s.lastSeen)}</span>
-          <button class="icob del" data-act="delst" title="Удалить ученика">🗑</button>
+          <div class="sactions">
+            <button class="icob edit" data-act="editst" title="Изменить фамилию, имя и пароль">✏️</button>
+            <button class="icob del" data-act="delst" title="Удалить ученика">🗑</button>
+          </div>
         </div>`;
       }).join('') || `<div class="empty">${A.students.length ? 'Никого не нашлось' : 'Пока ни один ученик не зарегистрировался.<br>Ученики появятся здесь после первого входа.'}</div>`}
     </div>`;
@@ -644,8 +649,111 @@ function bindStudents(){
     if (!confirm(`Удалить ученика ${st.last} ${st.first}? Его прогресс пропадёт.`)) return;
     await DB.deleteStudent(id); toast('Ученик удалён');
   });
+  /* ===== НОВОЕ: открытие модалки редактирования ученика ===== */
+  document.querySelectorAll('[data-act="editst"]').forEach(b => b.onclick = () => {
+    const id = b.closest('.srow').dataset.id;
+    const st = A.students.find(x => x.id === id);
+    if (st) openEditStudentModal(st);
+  });
 }
 const teacherEditing = () => { const a = document.activeElement; return a && a.closest && a.closest('.lbody'); };
+
+/* ======================================================================
+   🆕 МОДАЛКА РЕДАКТИРОВАНИЯ ЛОГИНА (ФИО) И ПАРОЛЯ УЧЕНИКА
+   ====================================================================== */
+function randomPassword(len = 8){
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  let s = ''; for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function openEditStudentModal(st){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <h3>✏️ Данные ученика</h3>
+      <div class="msub">Измени фамилию, имя и/или пароль. Ученик входит по фамилии+имени, поэтому при их изменении изменится и его «логин» на сайте.</div>
+
+      <label class="f" for="mLast">Фамилия</label>
+      <input class="inp" id="mLast" value="${esc(st.last)}" maxlength="40" placeholder="Иванов">
+
+      <label class="f" for="mFirst">Имя</label>
+      <input class="inp" id="mFirst" value="${esc(st.first)}" maxlength="40" placeholder="Иван">
+
+      <label class="f" for="mPass">Пароль</label>
+      <div class="pw-field">
+        <input class="inp" id="mPass" value="${esc(st.password)}" maxlength="40">
+        <button type="button" class="genbtn" id="mGenPass" title="Сгенерировать новый пароль">🎲 новый</button>
+      </div>
+
+      <div class="err" id="mErr" style="min-height:18px"></div>
+
+      <div class="actions">
+        <button class="btn white" id="mCancel">Отмена</button>
+        <button class="btn green" id="mSave">💾 Сохранить</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  overlay.querySelector('#mCancel').onclick = close;
+
+  overlay.querySelector('#mGenPass').onclick = () => {
+    overlay.querySelector('#mPass').value = randomPassword(8);
+  };
+
+  overlay.querySelector('#mSave').onclick = async () => {
+    const err = overlay.querySelector('#mErr'); err.textContent = '';
+    const newLast = cap(overlay.querySelector('#mLast').value);
+    const newFirst = cap(overlay.querySelector('#mFirst').value);
+    const newPass = overlay.querySelector('#mPass').value;
+
+    if (!newLast || !newFirst) { err.textContent = 'Фамилия и имя не могут быть пустыми'; return; }
+    if (!newPass || newPass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+
+    const newId = studentId(newLast, newFirst);
+    const idChanged = newId !== st.id;
+    const passChanged = newPass !== st.password;
+    const nameChanged = newLast !== st.last || newFirst !== st.first;
+
+    /* Проверка: если ФИО изменились — нет ли уже такого ученика */
+    if (idChanged && A.students.some(s => s.id === newId)) {
+      err.textContent = `Ученик ${newLast} ${newFirst} уже существует. Нельзя задать такие же ФИО.`;
+      return;
+    }
+
+    if (!idChanged && !passChanged && !nameChanged) { close(); return; }
+
+    const saveBtn = overlay.querySelector('#mSave');
+    saveBtn.disabled = true; saveBtn.textContent = 'Сохраняю…';
+
+    try {
+      if (idChanged) {
+        /* Переносим запись на новый id */
+        const data = Object.assign({}, st, {last: newLast, first: newFirst, password: newPass});
+        delete data.id;
+        await DB.setStudent(newId, data);
+        await DB.deleteStudent(st.id);
+        /* Если текущая сессия — этот ученик, обновляем id в сессии */
+        if (A.session && A.session.role === 'student' && A.session.id === st.id) {
+          A.session.id = newId; store.set(SESSION_KEY, A.session);
+        }
+        toast('Данные ученика обновлены ✅');
+      } else {
+        await DB.setStudent(st.id, {last: newLast, first: newFirst, password: newPass});
+        toast('Данные ученика обновлены ✅');
+      }
+      close();
+    } catch (e) {
+      err.textContent = 'Не удалось сохранить: ' + e.message;
+      saveBtn.disabled = false; saveBtn.textContent = '💾 Сохранить';
+    }
+  };
+
+  setTimeout(() => overlay.querySelector('#mLast').focus(), 50);
+}
 
 /* ======================================================================
    ЗАПУСК
@@ -685,7 +793,6 @@ function start(){
     A.openCount = n;
     if (A.me) { renderStudent(); syncProgress(); }
   }));
-  /* если ученика удалили, а подписка на список не пришла (демо без учеников) */
   setTimeout(async () => { if (A.session && A.session.role === 'student' && !A.me) { const st = await DB.getStudent(s.id).catch(() => null); if (!st) logout(); } }, 4000);
 }
 start();
