@@ -53,7 +53,7 @@ const TRACKERS = [
   --red:#f03e3e; --red-l:#fff0f0; --blue:#3b82f6; --blue-l:#eaf2ff; --gray:#c3cbd8;
   --shadow:0 2px 0 rgba(30,42,69,.04),0 8px 24px rgba(30,42,69,.06);
   --toast-bg:#1e2a45; --toast-ink:#fff; --overlay:rgba(30,42,69,.5);
-  --login-bg:radial-gradient(circle at 20% 10%,#d3f9d8 0,transparent 40%),radial-gradient(circle at 90% 90%,#e5dbff 0,transparent 40%),var(--bg);
+  --login-bg:radial-gradient(circle at 20% 10%,#d3f9d8 0,transparent 40%),radial-gradient(circle at 90% 90%,#e5dbff 0,transparent 40%);
   color-scheme:light;
 }
 /* ===== ТЁМНАЯ ТЕМА (включается кнопкой 🌙/☀️) ===== */
@@ -66,7 +66,7 @@ html[data-theme="dark"]{
   --red:#ff6b6b; --red-l:#3b1d20; --blue:#4dabf7; --blue-l:#1b2b4a; --gray:#4a5568;
   --shadow:0 2px 0 rgba(0,0,0,.25),0 8px 24px rgba(0,0,0,.4);
   --toast-bg:#e9eef8; --toast-ink:#16203a; --overlay:rgba(4,8,18,.65);
-  --login-bg:radial-gradient(circle at 20% 10%,rgba(32,201,151,.14) 0,transparent 40%),radial-gradient(circle at 90% 90%,rgba(124,77,255,.16) 0,transparent 40%),var(--bg);
+  --login-bg:radial-gradient(circle at 20% 10%,rgba(32,201,151,.14) 0,transparent 40%),radial-gradient(circle at 90% 90%,rgba(124,77,255,.16) 0,transparent 40%);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -208,6 +208,7 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .pw-field .inp{flex:1}
 
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--toast-bg);color:var(--toast-ink);padding:12px 18px;border-radius:14px;font-weight:800;z-index:70;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slide .25s}
+#decoCanvas{position:fixed;inset:0;pointer-events:none;z-index:-1}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .loading{min-height:60vh;display:grid;place-items:center;color:var(--muted);font-weight:800}
 
@@ -273,6 +274,7 @@ try {
 </head>
 <body>
 <div id="app"><div class="loading">Загрузка…</div></div>
+<canvas id="decoCanvas"></canvas>
 <canvas id="confetti"></canvas>
 <div id="chatRoot"></div>
 
@@ -344,14 +346,44 @@ function defaultConfig(){
       ]
     });
   }
-  return {lessons};
+  return {lessons, deco:'auto'};
 }
 function normalizeConfig(c){
   const d = defaultConfig();
   if (!c || !Array.isArray(c.lessons)) return d;
   while (c.lessons.length < LESSONS_COUNT) c.lessons.push(d.lessons[c.lessons.length]);
   c.lessons.forEach(l => { l.buttons = Array.isArray(l.buttons) ? l.buttons : []; l.title = l.title || ''; l.open = !!l.open; });
+  if (!DECO_BY_ID[c.deco]) c.deco = 'auto';
   return c;
+}
+
+/* ======================================================================
+   СЕЗОННОЕ ОФОРМЛЕНИЕ (включает учитель: листья/снег/цветы + праздники)
+   ====================================================================== */
+const DECO_LIST = [
+  {id:'auto', label:'Авто (по дате)'},
+  {id:'none', label:'— выключено'},
+  {id:'autumn', label:'🍂 Осень — листья', glyphs:['🍂','🍁','🍂','🍁','🍃'], n:26},
+  {id:'winter', label:'❄️ Зима — снег', glyphs:['❄','❄','❅','●'], n:42},
+  {id:'spring', label:'🌸 Весна — цветочки', glyphs:['🌸','🌷','🌼','🌸'], n:22},
+  {id:'summer', label:'🌞 Лето', glyphs:['🌞','🌻','🦋'], n:16},
+  {id:'halloween', label:'🎃 Хеллоуин', glyphs:['🎃','🦇','👻'], n:18},
+  {id:'ny', label:'🎄 Новый год', glyphs:['❄','🎄','🎁','⭐'], n:30},
+  {id:'feb23', label:'🎖️ 23 февраля', glyphs:['⭐','🎖️','🛩️'], n:18},
+  {id:'mar8', label:'🌷 8 марта', glyphs:['🌷','💐','✨','🌺'], n:22}
+];
+const DECO_BY_ID = Object.fromEntries(DECO_LIST.map(d => [d.id, d]));
+function pickAutoDeco(dt){
+  const t = (dt.getMonth() + 1) * 100 + dt.getDate(); /* ММДД */
+  if (t >= 1024 || t <= 102) return 'halloween'; /* 24 окт — 2 ноя */
+  if (t >= 1220 || t <= 114) return 'ny';        /* 20 дек — 14 янв */
+  if (t >= 220 && t <= 226) return 'feb23';      /* 20–26 фев */
+  if (t >= 305 && t <= 310) return 'mar8';       /* 5–10 мар */
+  const m = dt.getMonth();
+  if (m >= 8 && m <= 10) return 'autumn'; /* сен–ноя */
+  if (m === 11 || m <= 1) return 'winter'; /* дек–фев */
+  if (m >= 2 && m <= 4) return 'spring';   /* мар–май */
+  return 'summer';                          /* июн–авг */
 }
 
 /* ======================================================================
@@ -366,6 +398,7 @@ function makeLocalDB(){
     demo: true,
     async getConfig(){ return store.get(CK, null); },
     async saveConfig(c){ store.set(CK, c); fire(); },
+    async saveDeco(v){ const c = store.get(CK, {}) || {}; c.deco = v; store.set(CK, c); fire(); },
     onConfig(cb){ subs.config.add(cb); cb(store.get(CK, null)); return () => subs.config.delete(cb); },
     async getStudent(id){ return store.get(SK, {})[id] || null; },
     async setStudent(id, data){ const s = store.get(SK, {}); s[id] = Object.assign(s[id] || {}, data); store.set(SK, s); fire(); },
@@ -392,6 +425,7 @@ function makeFirebaseDB(){
     demo: false,
     async getConfig(){ const s = await cfgRef.get(); return s.exists ? s.data() : null; },
     async saveConfig(c){ await cfgRef.set(JSON.parse(JSON.stringify(c))); },
+    async saveDeco(v){ await cfgRef.set({deco: v}, {merge: true}); },
     onConfig(cb){ return cfgRef.onSnapshot(s => cb(s.exists ? s.data() : null), e => toast('Нет связи с базой: ' + e.message)); },
     async getStudent(id){ const s = await st.doc(id).get(); return s.exists ? s.data() : null; },
     async setStudent(id, data){ await st.doc(id).set(JSON.parse(JSON.stringify(data)), {merge:true}); },
@@ -511,6 +545,53 @@ function confetti(){
     if (++f < 160) requestAnimationFrame(tick); else x.clearRect(0, 0, c.width, c.height);
   })();
 }
+
+/* ===== движок сезонных частиц ===== */
+let decoRaf = 0, decoParts = [], decoKind = null;
+function spawnPart(conf, anywhere){
+  const dot = conf.id === 'winter' && Math.random() < .35;
+  const s = dot ? 2 + Math.random() * 2.5 : 13 + Math.random() * 13;
+  return {
+    x: Math.random() * innerWidth,
+    y: anywhere ? Math.random() * innerHeight : -30,
+    s, dot,
+    vy: .3 + Math.random() * .7 + s / 45,
+    rot: Math.random() * 6.3, vr: (Math.random() - .5) * .035,
+    sw: .5 + Math.random() * 1.5, ph: Math.random() * 6.3,
+    al: .45 + Math.random() * .55,
+    g: conf.glyphs[Math.floor(Math.random() * conf.glyphs.length)]
+  };
+}
+function applyDeco(kind){
+  if (kind === 'auto') kind = pickAutoDeco(new Date());
+  if (!DECO_BY_ID[kind]) kind = 'none';
+  if (kind === decoKind) return;
+  decoKind = kind;
+  cancelAnimationFrame(decoRaf);
+  const c = $('#decoCanvas'); if (!c) return;
+  c.width = innerWidth; c.height = innerHeight;
+  const x = c.getContext('2d');
+  const conf = DECO_BY_ID[kind];
+  x.clearRect(0, 0, c.width, c.height);
+  if (kind === 'none') return;
+  decoParts = Array.from({length: conf.n}, () => spawnPart(conf, true));
+  let t = Math.random() * 100;
+  const tick = () => {
+    t += .016;
+    x.clearRect(0, 0, c.width, c.height);
+    decoParts.forEach(p => {
+      p.y += p.vy; p.x += Math.sin(t * p.sw + p.ph) * .5; p.rot += p.vr;
+      if (p.y - p.s > c.height) Object.assign(p, spawnPart(conf, false));
+      x.save(); x.translate(p.x, p.y); x.rotate(p.rot); x.globalAlpha = p.al;
+      if (p.dot) { x.fillStyle = '#fff'; x.beginPath(); x.arc(0, 0, p.s / 2, 0, 7); x.fill(); }
+      else { x.font = p.s + 'px serif'; x.textAlign = 'center'; x.fillText(p.g, 0, 0); }
+      x.restore();
+    });
+    decoRaf = requestAnimationFrame(tick);
+  };
+  decoRaf = requestAnimationFrame(tick);
+}
+addEventListener('resize', () => { const k = decoKind; if (k && k !== 'none') { decoKind = null; applyDeco(k); } });
 function stopSubs(){ A.unsub.forEach(u => { try { u(); } catch (e) {} }); A.unsub = []; }
 function logout(){ stopSubs(); if (!DB.demo) DB.signOut().catch(() => {}); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; A.chatData = null; chatS.open = false; chatS.sid = null; chatS.drafts = {}; renderChat(); renderLogin(); }
 
@@ -541,6 +622,8 @@ function renderLogin(){
     </form>
   </div></div>`;
   $('#themeBtn').onclick = toggleTheme;
+  /* оформление на экране входа: конфиг можно читать без входа */
+  DB.getConfig().then(c => { if (!A.session && c) applyDeco(normalizeConfig(c).deco); }).catch(() => {});
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { loginRole = b.dataset.role; renderLogin(); });
   $('#lf').onsubmit = async e => {
     e.preventDefault();
@@ -747,6 +830,11 @@ function lessonsView(){
       <button class="btn green" id="openNext" ${next < 0 ? 'disabled' : ''}>${next < 0 ? '✓ Все уроки открыты' : `🔓 Открыть следующий урок (${next + 1})`}</button>
       <div class="stat">Открыто уроков: <b>${cfg.lessons.filter(l => l.open).length}</b> из ${cfg.lessons.length}</div>
       <div class="stat">Учеников: <b>${A.students.length}</b></div>
+      <label class="stat" style="display:flex;align-items:center;gap:6px">✨ Оформление:
+        <select class="inp" id="decoSel" style="padding:8px 10px;width:auto;font-weight:800">
+          ${DECO_LIST.map(d => `<option value="${d.id}" ${(cfg.deco || 'auto') === d.id ? 'selected' : ''}>${d.label}</option>`).join('')}
+        </select>
+      </label>
       <span class="save-st" id="saveSt">${A.dirty ? 'Сохраняю…' : ''}</span>
     </div>
     <h3 class="sec">📚 Все уроки <span class="muted" style="font-size:14px;font-weight:700">— нажми на урок, чтобы изменить название, кнопки и ссылки</span></h3>
@@ -777,6 +865,13 @@ function lessonsView(){
       </div>`).join('')}`;
 }
 function bindLessons(){
+  const ds = $('#decoSel');
+  if (ds) ds.onchange = async () => {
+    const v = ds.value;
+    A.cfg.deco = v; applyDeco(v);
+    try { await DB.saveDeco(v); toast('Оформление обновлено — ученики увидят его тоже ✨'); }
+    catch (e) { toast('Не удалось сохранить оформление: ' + e.message); }
+  };
   $('#openNext').onclick = () => {
     const n = A.cfg.lessons.findIndex(l => !l.open); if (n < 0) return;
     A.cfg.lessons[n].open = true; saveCfg(); renderTeacher();
@@ -1131,6 +1226,7 @@ async function start(){
       else if (c && !A.dirty && !teacherEditing()) A.cfg = normalizeConfig(c);
       else if (!c && !A.cfg) A.cfg = defaultConfig();
       first = false;
+      applyDeco(A.cfg && A.cfg.deco);
       if (!teacherEditing()) renderTeacher();
     }));
     A.unsub.push(DB.onStudents(list => { A.students = list; renderChat(); if (A.cfg && !teacherEditing() && !(A.view === 'students' && document.activeElement && document.activeElement.id === 'search')) renderTeacher(); }));
@@ -1169,6 +1265,7 @@ async function start(){
   }
   A.unsub.push(DB.onConfig(c => {
     A.cfg = normalizeConfig(c);
+    applyDeco(A.cfg.deco);
     const n = A.cfg.lessons.filter(l => l.open).length;
     if (A.openCount != null && n > A.openCount) {
       const cur = curLesson(A.cfg); A.sel = cur;
