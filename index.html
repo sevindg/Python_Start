@@ -12,8 +12,12 @@
    НАСТРОЙКИ — ЗДЕСЬ МОЖНО МЕНЯТЬ
    ====================================================================== */
 
-/* 1) Вход учителя */
-const TEACHER = { login: 'seva', password: '123456789' };
+/* 1) Вход учителя через Firebase Authentication.
+   В консоли Firebase → Authentication → Users создай аккаунт с ТОЧНО таким email
+   (пароль придумай ОТДЕЛЬНЫЙ, не как у почты — см. подсказку ниже).
+   В демо-режиме (без Firebase) работает старый вход. */
+const TEACHER_EMAIL = 'makcuma28@gmail.com';
+const TEACHER = { login: 'seva', password: '123456789' }; /* только для демо-режима */
 
 /* 2) Общая база Firebase (см. «Инструкция.txt»). */
 const FIREBASE_CONFIG = {
@@ -38,6 +42,7 @@ const TRACKERS = [
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <style>
 :root{
   --bg:#eef3f9; --card:#fff; --ink:#1e2a45; --muted:#7a869f; --line:#e3e9f2;
@@ -370,12 +375,19 @@ function makeLocalDB(){
     async markRead(sid, who, at){ const c = store.get(CH, {}); const t = c[sid] || {}; t[who + 'Read'] = at || Date.now(); c[sid] = t; store.set(CH, c); fire(); },
     onChats(cb){ subs.chats.add(cb); cb(store.get(CH, {})); return () => subs.chats.delete(cb); },
     onChat(sid, cb){ return this.onChats(c => cb(c[sid] || null)); },
-    async moveChat(oldId, newId){ const c = store.get(CH, {}); if (c[oldId]) { c[newId] = c[oldId]; delete c[oldId]; store.set(CH, c); fire(); } }
+    async moveChat(oldId, newId){ const c = store.get(CH, {}); if (c[oldId]) { c[newId] = c[oldId]; delete c[oldId]; store.set(CH, c); fire(); } },
+    authReady(){ return Promise.resolve(null); },
+    signIn(){ return Promise.reject(new Error('no-auth-in-demo')); },
+    signOut(){ return Promise.resolve(); },
+    createStudentAccount(){ return Promise.reject(new Error('no-auth-in-demo')); },
+    onStudent(id, cb){ return this.onStudents(list => cb(list.find(x => x.id === id) || null)); },
+    findStudentByUid(){ return Promise.resolve(null); }
   };
 }
 function makeFirebaseDB(){
   firebase.initializeApp(FIREBASE_CONFIG);
-  const db = firebase.firestore();
+  const db = firebase.firestore(), auth = firebase.auth();
+  const secondary = () => firebase.apps.find(a => a.name === 'student-admin') || firebase.initializeApp(FIREBASE_CONFIG, 'student-admin');
   const cfgRef = db.collection('lms').doc('config'), st = db.collection('students'), ch = db.collection('chats');
   return {
     demo: false,
@@ -390,7 +402,19 @@ function makeFirebaseDB(){
     async markRead(sid, who, at){ const v = {}; v[who + 'Read'] = at || Date.now(); await ch.doc(sid).set(v, {merge:true}); },
     onChats(cb){ return ch.onSnapshot(q => { const m = {}; q.docs.forEach(d => m[d.id] = d.data()); cb(m); }, e => toast('Нет связи с чатом: ' + e.message)); },
     onChat(sid, cb){ return ch.doc(sid).onSnapshot(d => cb(d.exists ? d.data() : null), e => toast('Нет связи с чатом: ' + e.message)); },
-    async moveChat(oldId, newId){ const d = await ch.doc(oldId).get(); if (!d.exists) return; await ch.doc(newId).set(d.data()); await ch.doc(oldId).delete().catch(() => {}); }
+    async moveChat(oldId, newId){ const d = await ch.doc(oldId).get(); if (!d.exists) return; await ch.doc(newId).set(d.data()); await ch.doc(oldId).delete().catch(() => {}); },
+    authReady(){ return new Promise(res => { const u = auth.currentUser; if (u) return res(u); const off = auth.onAuthStateChanged(x => { off(); res(x); }); }); },
+    signIn(email, pw){ return auth.signInWithEmailAndPassword(email, pw); },
+    signOut(){ return auth.signOut(); },
+    /* создаёт аккаунт входа ученику ОТ ИМЕНИ УЧИТЕЛЯ (через второе приложение, сессия учителя не трогается) */
+    async createStudentAccount(email, pw){
+      const app2 = secondary();
+      const cred = await app2.auth().createUserWithEmailAndPassword(email, pw);
+      await app2.auth().signOut();
+      return cred.user.uid;
+    },
+    onStudent(id, cb){ return st.doc(id).onSnapshot(d => cb(d.exists ? {id: d.id, ...d.data()} : null), e => toast('Нет связи с базой: ' + e.message)); },
+    findStudentByUid(uid){ return st.where('authUid', '==', uid).limit(1).get().then(q => q.empty ? null : {id: q.docs[0].id, ...q.docs[0].data()}); }
   };
 }
 let DB;
@@ -462,6 +486,17 @@ async function hashPw(pw){
 }
 const isHash = s => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
 
+/* email-логин ученика для Firebase Authentication (кириллицу переводим в латиницу) */
+const TRANSLIT = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+const authEmail = id => id.split('').map(ch => TRANSLIT[ch] !== undefined ? TRANSLIT[ch] : ch).join('') + '@pystart.ru';
+const authErrText = e => {
+  const c = e && e.code;
+  if (c === 'auth/weak-password') return 'Пароль слишком короткий — минимум 6 символов';
+  if (c === 'auth/email-already-in-use') return 'Такой аккаунт входа уже существует';
+  if (c === 'auth/too-many-requests') return 'Слишком много попыток — подожди пару минут';
+  return 'Не удалось создать аккаунт входа. Проверь интернет.';
+};
+
 function toast(msg){
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
   setTimeout(() => t.remove(), 3200);
@@ -478,7 +513,7 @@ function confetti(){
   })();
 }
 function stopSubs(){ A.unsub.forEach(u => { try { u(); } catch (e) {} }); A.unsub = []; }
-function logout(){ stopSubs(); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; A.chatData = null; chatS.open = false; chatS.sid = null; chatS.drafts = {}; renderChat(); renderLogin(); }
+function logout(){ stopSubs(); if (!DB.demo) DB.signOut().catch(() => {}); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; A.chatData = null; chatS.open = false; chatS.sid = null; chatS.drafts = {}; renderChat(); renderLogin(); }
 
 /* ======================================================================
    ВХОД
@@ -496,10 +531,10 @@ function renderLogin(){
       ${loginRole === 'student' ? `
         <label class="f" for="ln">Фамилия</label><input class="inp" id="ln" maxlength="40" required placeholder="Иванов">
         <label class="f" for="fn">Имя</label><input class="inp" id="fn" maxlength="40" required placeholder="Иван">
-        <label class="f" for="pw">Пароль</label><input class="inp" id="pw" type="password" maxlength="40" required placeholder="Придумай или введи свой пароль">
-        <div class="hint">Первый раз здесь? Впиши фамилию, имя и придумай пароль — аккаунт создастся сам. Запомни пароль!</div>
+        <label class="f" for="pw">Пароль</label><input class="inp" id="pw" type="password" maxlength="40" required placeholder="Пароль, который дала учительница">
+        <div class="hint">${DB.demo ? 'Первый раз здесь? Впиши фамилию, имя и придумай пароль — аккаунт создастся сам. Запомни пароль!' : 'Входи с теми именем и паролем, которые дала учительница. Забыл пароль? Спроси у неё на уроке.'}</div>
       ` : `
-        <label class="f" for="tl">Логин</label><input class="inp" id="tl" required autocomplete="username">
+        ${DB.demo ? '<label class="f" for="tl">Логин</label><input class="inp" id="tl" required autocomplete="username">' : `<div class="hint" style="margin-top:0">Аккаунт: ${esc(TEACHER_EMAIL)}</div>`}
         <label class="f" for="pw">Пароль</label><input class="inp" id="pw" type="password" required autocomplete="current-password">
       `}
       <div class="err" id="lerr"></div>
@@ -512,26 +547,57 @@ function renderLogin(){
     e.preventDefault();
     const err = $('#lerr'); err.textContent = '';
     const pw = $('#pw').value;
+    $('#lbtn').disabled = true;
     if (loginRole === 'teacher') {
-      if ($('#tl').value.trim() === TEACHER.login && pw === TEACHER.password) { A.session = {role:'teacher'}; store.set(SESSION_KEY, A.session); start(); }
-      else err.textContent = 'Неверный логин или пароль';
+      try {
+        if (DB.demo) {
+          if ($('#tl').value.trim() === TEACHER.login && pw === TEACHER.password) { A.session = {role:'teacher'}; store.set(SESSION_KEY, A.session); start(); return; }
+          err.textContent = 'Неверный логин или пароль';
+        } else {
+          await DB.signIn(TEACHER_EMAIL, pw);
+          A.session = {role:'teacher'}; store.set(SESSION_KEY, A.session); start(); return;
+        }
+      } catch (x) {
+        const c = x && x.code;
+        err.textContent = (c === 'auth/invalid-credential' || c === 'auth/wrong-password') ? 'Неверный пароль'
+          : (c === 'auth/too-many-requests' ? 'Слишком много попыток — подожди пару минут' : 'Не удалось войти. Проверь интернет.');
+      }
+      $('#lbtn').disabled = false;
       return;
     }
     const last = cap($('#ln').value), first = cap($('#fn').value);
-    if (!last || !first) { err.textContent = 'Впиши фамилию и имя'; return; }
-    if (pw.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
-    $('#lbtn').disabled = true;
+    if (!last || !first) { err.textContent = 'Впиши фамилию и имя'; $('#lbtn').disabled = false; return; }
+    if (pw.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; $('#lbtn').disabled = false; return; }
     try {
-      const id = studentId(last, first), st = await DB.getStudent(id);
-      if (st) {
-        const ok = isHash(st.password) ? (await hashPw(pw)) === st.password : st.password === pw;
-        if (!ok) { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
-        if (!isHash(st.password)) DB.setStudent(id, {password: await hashPw(pw)}).catch(() => {}); /* старый пароль мигрирует в хеш при первом входе */
-      } else {
-        await DB.setStudent(id, {last, first, password: await hashPw(pw), created:Date.now(), lastSeen:Date.now(), progress:{}});
+      const id = studentId(last, first);
+      if (DB.demo) {
+        const st = await DB.getStudent(id);
+        if (st) {
+          const ok = isHash(st.password) ? (await hashPw(pw)) === st.password : st.password === pw;
+          if (!ok) { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
+          if (!isHash(st.password)) DB.setStudent(id, {password: await hashPw(pw)}).catch(() => {}); /* старый пароль мигрирует в хеш при первом входе */
+        } else {
+          await DB.setStudent(id, {last, first, password: await hashPw(pw), created:Date.now(), lastSeen:Date.now(), progress:{}});
+        }
+        A.session = {role:'student', id}; store.set(SESSION_KEY, A.session);
+        if (!st) toast(`Добро пожаловать, ${first}! Аккаунт создан 🎉`);
+        start();
+        return;
       }
-      A.session = {role:'student', id}; store.set(SESSION_KEY, A.session);
-      if (!st) toast(`Добро пожаловать, ${first}! Аккаунт создан 🎉`);
+      /* Firebase: ученик входит по аккаунту, который создала учительница */
+      let user;
+      try { user = await DB.signIn(authEmail(id), pw); }
+      catch (x) {
+        const c = x && x.code;
+        if (c === 'auth/user-not-found' || c === 'auth/invalid-email') { err.textContent = 'Аккаунт ещё не создан — попроси учительницу, она создаст его за минуту.'; $('#lbtn').disabled = false; return; }
+        if (c === 'auth/invalid-credential' || c === 'auth/wrong-password') { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
+        if (c === 'auth/too-many-requests') { err.textContent = 'Слишком много попыток — подожди пару минут.'; $('#lbtn').disabled = false; return; }
+        throw x;
+      }
+      const st = await DB.findStudentByUid(user.uid);
+      if (!st) { err.textContent = 'Аккаунт ещё не активирован — попроси учительницу.'; await DB.signOut(); $('#lbtn').disabled = false; return; }
+      A.session = {role:'student', id: st.id, uid: user.uid};
+      store.set(SESSION_KEY, A.session);
       start();
     } catch (x) { err.textContent = 'Не удалось подключиться к базе. Проверь интернет.'; $('#lbtn').disabled = false; }
   };
@@ -745,6 +811,7 @@ function studentsView(){
       <div class="stat">Всего: <b>${A.students.length}</b></div>
       <input class="inp search" id="search" placeholder="🔍 Поиск по имени" value="${esc(A.search)}">
       <span class="save-st"></span>
+      <button class="pill" id="addStudent" title="Создать аккаунт новому ученику">＋ Ученик</button>
       <button class="pill" id="backLessons">← К урокам</button>
     </div>
     <div class="card slist">
@@ -753,7 +820,7 @@ function studentsView(){
         const st = studentStats(s, A.cfg);
         return `<div class="srow" data-id="${esc(s.id)}">
           <span class="n muted" style="font-weight:900">${k + 1}</span>
-          <div><div class="sname">${esc(s.last)} ${esc(s.first)}</div><div class="spass">пароль скрыт 🔒</div></div>
+          <div><div class="sname">${esc(s.last)} ${esc(s.first)}</div><div class="spass">${DB.demo ? 'пароль скрыт 🔒' : (s.authUid ? 'вход ✓' : '🔑 нет входа — задай пароль через ✏️')}</div></div>
           <div><div class="pct">${st.pct}%</div><div class="bar"><i style="width:${st.pct}%"></i></div>
             <div class="chips">${st.items.map(it => `<span class="chip ${it.frac >= 1 ? 'done' : ''}" title="Урок ${it.li + 1}">У${it.li + 1} · ${esc(it.label)}: ${esc(it.text)}</span>`).join('')}</div></div>
           <span class="seen">${fmtSeen(s.lastSeen)}</span>
@@ -767,6 +834,7 @@ function studentsView(){
 }
 function bindStudents(){
   $('#backLessons').onclick = () => { A.view = 'lessons'; renderTeacher(); };
+  const ab = $('#addStudent'); if (ab) ab.onclick = () => openEditStudentModal(null);
   const s = $('#search');
   s.oninput = () => { A.search = s.value; renderTeacher(); const n = $('#search'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
   document.querySelectorAll('[data-act="delst"]').forEach(b => b.onclick = async () => {
@@ -793,30 +861,37 @@ function randomPassword(len = 8){
 }
 
 function openEditStudentModal(st){
+  const isNew = !st;
+  const hasAuth = !!(st && st.authUid); /* есть ли аккаунт входа Firebase */
+  const minPw = DB.demo ? 4 : 6; /* Firebase Authentication требует минимум 6 символов */
+  const saveLabel = isNew ? '➕ Создать' : '💾 Сохранить';
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
-      <h3>✏️ Данные ученика</h3>
-      <div class="msub">Измени фамилию, имя и/или пароль. Ученик входит по фамилии+имени, поэтому при их изменении изменится и его «логин» на сайте. Пароли хранятся в виде хеша, поэтому текущий пароль не показывается: если ученик забыл пароль — просто задай новый.</div>
+      <h3>${isNew ? '➕ Новый ученик' : '✏️ Данные ученика'}</h3>
+      <div class="msub">${isNew
+        ? 'Создаст аккаунт: ученик будет входить по фамилии+имени и этому паролю. Запиши пароль и передай ученику на уроке.'
+        : 'Измени фамилию, имя и/или пароль. Ученик входит по фамилии+имени — при их изменении изменится и его «логин» на сайте, а прогресс и переписка сохранятся. Текущий пароль не показывается: если ученик забыл пароль — задай новый и передай ему.'}</div>
 
       <label class="f" for="mLast">Фамилия</label>
-      <input class="inp" id="mLast" value="${esc(st.last)}" maxlength="40" placeholder="Иванов">
+      <input class="inp" id="mLast" value="${st ? esc(st.last) : ''}" maxlength="40" placeholder="Иванов">
 
       <label class="f" for="mFirst">Имя</label>
-      <input class="inp" id="mFirst" value="${esc(st.first)}" maxlength="40" placeholder="Иван">
+      <input class="inp" id="mFirst" value="${st ? esc(st.first) : ''}" maxlength="40" placeholder="Иван">
 
-      <label class="f" for="mPass">Новый пароль</label>
+      <label class="f" for="mPass">${hasAuth ? 'Новый пароль' : 'Пароль для входа'}</label>
       <div class="pw-field">
-        <input class="inp" id="mPass" value="" placeholder="пусто — не менять пароль" maxlength="40" autocomplete="new-password">
+        <input class="inp" id="mPass" value="" ${hasAuth ? 'placeholder="пусто — не менять пароль"' : 'placeholder="минимум ' + minPw + ' символов"'} maxlength="40" autocomplete="new-password">
         <button type="button" class="genbtn" id="mGenPass" title="Сгенерировать новый пароль">🎲 новый</button>
       </div>
+      ${!isNew && !hasAuth && !DB.demo ? '<div class="hint">У этого ученика ещё нет аккаунта входа — задай пароль, и аккаунт создастся. Скажи пароль ученику на уроке.</div>' : ''}
 
       <div class="err" id="mErr" style="min-height:18px"></div>
 
       <div class="actions">
         <button class="btn white" id="mCancel">Отмена</button>
-        <button class="btn green" id="mSave">💾 Сохранить</button>
+        <button class="btn green" id="mSave">${saveLabel}</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
@@ -826,7 +901,7 @@ function openEditStudentModal(st){
   overlay.querySelector('#mCancel').onclick = close;
 
   overlay.querySelector('#mGenPass').onclick = () => {
-    overlay.querySelector('#mPass').value = randomPassword(8);
+    overlay.querySelector('#mPass').value = randomPassword(Math.max(8, minPw + 2));
   };
 
   overlay.querySelector('#mSave').onclick = async () => {
@@ -836,46 +911,70 @@ function openEditStudentModal(st){
     const newPass = overlay.querySelector('#mPass').value;
 
     if (!newLast || !newFirst) { err.textContent = 'Фамилия и имя не могут быть пустыми'; return; }
-    if (newPass && newPass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+    /* без аккаунта входа пароль обязателен (в демо можно оставить старый) */
+    const passRequired = isNew || (!DB.demo && !hasAuth);
+    if (!newPass && passRequired) { err.textContent = 'Задай пароль — без него ученик не сможет войти'; return; }
+    if (newPass && newPass.length < minPw) { err.textContent = 'Пароль должен быть не короче ' + minPw + ' символов'; return; }
 
     const newId = studentId(newLast, newFirst);
-    const idChanged = newId !== st.id;
+    const idChanged = !isNew && newId !== st.id;
     const passChanged = !!newPass; /* пустое поле = пароль не меняем */
-    const nameChanged = newLast !== st.last || newFirst !== st.first;
+    const nameChanged = !isNew && (newLast !== st.last || newFirst !== st.first);
 
     /* Проверка: если ФИО изменились — нет ли уже такого ученика */
-    if (idChanged && A.students.some(s => s.id === newId)) {
+    if ((isNew || idChanged) && A.students.some(s => s.id === newId)) {
       err.textContent = `Ученик ${newLast} ${newFirst} уже существует. Нельзя задать такие же ФИО.`;
       return;
     }
 
-    if (!idChanged && !passChanged && !nameChanged) { close(); return; }
+    if (!isNew && !idChanged && !passChanged && !nameChanged) { close(); return; }
 
-    const newPassHash = passChanged ? await hashPw(newPass) : st.password;
     const saveBtn = overlay.querySelector('#mSave');
     saveBtn.disabled = true; saveBtn.textContent = 'Сохраняю…';
 
     try {
-      if (idChanged) {
-        /* Переносим запись на новый id */
-        const data = Object.assign({}, st, {last: newLast, first: newFirst, password: newPassHash});
-        delete data.id;
+      /* собираем запись ученика */
+      const base = isNew
+        ? {created: Date.now(), lastSeen: Date.now(), progress: {}}
+        : Object.assign({}, st);
+      delete base.id;
+      const data = Object.assign(base, {last: newLast, first: newFirst, password: passChanged ? await hashPw(newPass) : st.password});
+
+      /* аккаунт входа Firebase: создаём, если его нет, или заводим новый при смене пароля */
+      if (!DB.demo && (isNew || !hasAuth || (passChanged && hasAuth))) {
+        const email = authEmail(idChanged ? newId : st.id);
+        let uid = null;
+        try { uid = await DB.createStudentAccount(email, newPass); }
+        catch (x) {
+          if (x && x.code === 'auth/email-already-in-use') {
+            /* пароль старого аккаунта сбросить нельзя — заводим новый вариант логина */
+            for (let n = 2; n <= 9 && !uid; n++) {
+              try { uid = await DB.createStudentAccount(email.replace('@', '+' + n + '@'), newPass); }
+              catch (y) { if (!(y && y.code === 'auth/email-already-in-use')) throw y; }
+            }
+            if (!uid) throw x;
+          } else throw x;
+        }
+        data.authUid = uid;
+      }
+
+      if (isNew) {
+        await DB.setStudent(newId, data);
+        toast(`Ученик ${newLast} ${newFirst} создан 🎉 Запиши и передай ему пароль!`);
+      } else if (idChanged) {
         await DB.setStudent(newId, data);
         await DB.moveChat(st.id, newId); /* переносим переписку на новый id, чтобы история не потерялась */
         await DB.deleteStudent(st.id);
-        /* Если текущая сессия — этот ученик, обновляем id в сессии */
-        if (A.session && A.session.role === 'student' && A.session.id === st.id) {
-          A.session.id = newId; store.set(SESSION_KEY, A.session);
-        }
+        /* в браузере ученика сессия обновится сама: он найдёт свой аккаунт по authUid */
         toast('Данные ученика обновлены ✅');
       } else {
-        await DB.setStudent(st.id, {last: newLast, first: newFirst, password: newPassHash});
+        await DB.setStudent(st.id, data);
         toast('Данные ученика обновлены ✅');
       }
       close();
     } catch (e) {
-      err.textContent = 'Не удалось сохранить: ' + e.message;
-      saveBtn.disabled = false; saveBtn.textContent = '💾 Сохранить';
+      err.textContent = (e && e.code) ? authErrText(e) : 'Не удалось сохранить: ' + ((e && e.message) || e);
+      saveBtn.disabled = false; saveBtn.textContent = saveLabel;
     }
   };
 
@@ -983,15 +1082,27 @@ function markChatRead(){
 /* ======================================================================
    ЗАПУСК
    ====================================================================== */
-function start(){
+async function start(){
   stopSubs();
   $('#app').innerHTML = '<div class="loading">Загрузка…</div>';
   const s = A.session;
   if (!s) return renderLogin();
+  if (!DB.demo) {
+    /* проверяем настоящий вход (Firebase Authentication) */
+    const user = await DB.authReady();
+    if (!user) { A.session = null; store.del(SESSION_KEY); return renderLogin(); }
+    if (s.role === 'teacher' && user.email !== TEACHER_EMAIL) { A.session = null; store.del(SESSION_KEY); return renderLogin(); }
+    if (s.role === 'student') {
+      if (!s.uid) { s.uid = user.uid; store.set(SESSION_KEY, s); }
+      else if (s.uid !== user.uid) { A.session = null; store.del(SESSION_KEY); return renderLogin(); }
+    }
+  }
+  const teacherUI = s.role === 'teacher';
   /* чат: учитель слушает все диалоги, ученик — только свой (чужие переписки не загружаются) */
-  if (s.role === 'teacher') A.unsub.push(DB.onChats(m => { A.chatData = m || {}; renderChat(); }));
-  else A.unsub.push(DB.onChat(s.id, m => { A.chatData = { [s.id]: m || {} }; renderChat(); }));
-  if (s.role === 'teacher') {
+  const subStudentChat = id => { chatUnsub = DB.onChat(id, m => { A.chatData = { [id]: m || {} }; renderChat(); }); };
+  let chatUnsub = null;
+  if (teacherUI) A.unsub.push(DB.onChats(m => { A.chatData = m || {}; renderChat(); }));
+  if (teacherUI) {
     A.view = 'lessons';
     let first = true;
     A.unsub.push(DB.onConfig(c => {
@@ -1004,14 +1115,45 @@ function start(){
     A.unsub.push(DB.onStudents(list => { A.students = list; renderChat(); if (A.cfg && !teacherEditing() && !(A.view === 'students' && document.activeElement && document.activeElement.id === 'search')) renderTeacher(); }));
     return;
   }
-  A.unsub.push(DB.onStudents(list => {
-    const me = list.find(x => x.id === s.id);
+  /* ===== ученик ===== */
+  const handleMe = me => {
     if (!me) { if (A.me) { toast('Аккаунт удалён учителем'); logout(); } return; }
     const firstLoad = !A.me;
     A.me = me;
     accountTheme(me); /* подтягиваем тему из аккаунта (или отдаём свою) */
     if (A.cfg) { if (firstLoad) syncProgress(); renderStudent(); }
-  }));
+  };
+  subStudentChat(s.id);
+  A.unsub.push(() => { if (chatUnsub) chatUnsub(); }); /* подписка на чат может переподключаться при переименовании */
+  if (DB.demo) {
+    A.unsub.push(DB.onStudents(list => {
+      let me = list.find(x => x.id === s.id);
+      if (!me && A.me) {
+        /* ученика с таким id нет — возможно, учитель его переименовал (дата создания сохраняется) */
+        const cand = list.find(x => x.created && x.created === A.me.created && x.id !== s.id);
+        if (cand) { s.id = cand.id; store.set(SESSION_KEY, s); subStudentChat(s.id); me = cand; }
+      }
+      handleMe(me);
+    }));
+  } else {
+    /* Firebase: слушаем ТОЛЬКО свой документ (правила не дают читать чужие) */
+    let studentUnsub = null;
+    const subMe = () => {
+      studentUnsub = DB.onStudent(s.id, me => {
+        if (me) return handleMe(me);
+        /* документ пропал — учитель мог переименовать: ищем по аккаунту входа (authUid) */
+        DB.findStudentByUid(s.uid).then(cand => {
+          if (cand) {
+            s.id = cand.id; store.set(SESSION_KEY, s);
+            subStudentChat(s.id); subMe(); /* переподключаемся к новому id */
+            handleMe(cand);
+          } else handleMe(null);
+        }).catch(() => handleMe(null));
+      });
+    };
+    subMe();
+    A.unsub.push(() => { if (studentUnsub) studentUnsub(); });
+  }
   A.unsub.push(DB.onConfig(c => {
     A.cfg = normalizeConfig(c);
     const n = A.cfg.lessons.filter(l => l.open).length;
