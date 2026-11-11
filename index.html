@@ -585,14 +585,24 @@ function renderLogin(){
         return;
       }
       /* Firebase: ученик входит по аккаунту, который создала учительница */
-      let user;
+      let user = null;
       try { user = await DB.signIn(authEmail(id), pw); }
       catch (x) {
         const c = x && x.code;
         if (c === 'auth/user-not-found' || c === 'auth/invalid-email') { err.textContent = 'Аккаунт ещё не создан — попроси учительницу, она создаст его за минуту.'; $('#lbtn').disabled = false; return; }
-        if (c === 'auth/invalid-credential' || c === 'auth/wrong-password') { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
-        if (c === 'auth/too-many-requests') { err.textContent = 'Слишком много попыток — подожди пару минут.'; $('#lbtn').disabled = false; return; }
-        throw x;
+        if (c === 'auth/invalid-credential' || c === 'auth/wrong-password') {
+          /* пароль могли сбрасывать — тогда вход в аккаунте-варианте логина (+2@, +3@…) */
+          let limited = false;
+          for (let n = 2; n <= 9 && !user; n++) {
+            try { user = await DB.signIn(authEmail(id).replace('@', '+' + n + '@'), pw); }
+            catch (y) {
+              if (y && y.code === 'auth/too-many-requests') { limited = true; break; }
+              if (!(y && (y.code === 'auth/user-not-found' || y.code === 'auth/invalid-credential' || y.code === 'auth/wrong-password'))) throw y;
+            }
+          }
+          if (!user) { err.textContent = limited ? 'Слишком много попыток — подожди пару минут.' : 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
+        } else if (c === 'auth/too-many-requests') { err.textContent = 'Слишком много попыток — подожди пару минут.'; $('#lbtn').disabled = false; return; }
+        else throw x;
       }
       const st = await DB.findStudentByUid(user.uid);
       if (!st) { err.textContent = 'Аккаунт ещё не активирован — попроси учительницу.'; await DB.signOut(); $('#lbtn').disabled = false; return; }
@@ -943,19 +953,21 @@ function openEditStudentModal(st){
       /* аккаунт входа Firebase: создаём, если его нет, или заводим новый при смене пароля */
       if (!DB.demo && (isNew || !hasAuth || (passChanged && hasAuth))) {
         const email = authEmail(idChanged ? newId : st.id);
-        let uid = null;
+        let uid = null, usedEmail = email;
         try { uid = await DB.createStudentAccount(email, newPass); }
         catch (x) {
           if (x && x.code === 'auth/email-already-in-use') {
             /* пароль старого аккаунта сбросить нельзя — заводим новый вариант логина */
             for (let n = 2; n <= 9 && !uid; n++) {
-              try { uid = await DB.createStudentAccount(email.replace('@', '+' + n + '@'), newPass); }
+              usedEmail = email.replace('@', '+' + n + '@');
+              try { uid = await DB.createStudentAccount(usedEmail, newPass); }
               catch (y) { if (!(y && y.code === 'auth/email-already-in-use')) throw y; }
             }
             if (!uid) throw x;
           } else throw x;
         }
         data.authUid = uid;
+        data.authEmail = usedEmail; /* запоминаем точный логин аккаунта входа */
       }
 
       if (isNew) {
