@@ -403,7 +403,8 @@ function makeFirebaseDB(){
     onChat(sid, cb){ return ch.doc(sid).onSnapshot(d => cb(d.exists ? d.data() : null), e => toast('Нет связи с чатом: ' + e.message)); },
     async moveChat(oldId, newId){ const d = await ch.doc(oldId).get(); if (!d.exists) return; await ch.doc(newId).set(d.data()); await ch.doc(oldId).delete().catch(() => {}); },
     authReady(){ return new Promise(res => { const u = auth.currentUser; if (u) return res(u); const off = auth.onAuthStateChanged(x => { off(); res(x); }); }); },
-    signIn(email, pw){ return auth.signInWithEmailAndPassword(email, pw); },
+    /* возвращает именно ПОЛЬЗОВАТЕЛЯ (у UserCredential обёртки другой формат) */
+    signIn(email, pw){ return auth.signInWithEmailAndPassword(email, pw).then(c => c.user || c); },
     signOut(){ return auth.signOut(); },
     /* создаёт аккаунт входа ученику ОТ ИМЕНИ УЧИТЕЛЯ (через второе приложение, сессия учителя не трогается) */
     async createStudentAccount(email, pw){
