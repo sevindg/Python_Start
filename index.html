@@ -602,9 +602,13 @@ function renderLogin(){
         } else if (c === 'auth/too-many-requests') { err.textContent = 'Слишком много попыток — подожди пару минут.'; $('#lbtn').disabled = false; return; }
         else throw x;
       }
-      let st = null;
-      try { st = await DB.getStudent(id); } catch (e) { st = null; } /* читаем СВОЙ документ по id (правила разрешают) */
-      if (!st || st.authUid !== user.uid) { err.textContent = 'Аккаунт ещё не активирован — попроси учительницу.'; await DB.signOut(); $('#lbtn').disabled = false; return; }
+      let st = null, readErr = null;
+      try { st = await DB.getStudent(id); } catch (e) { readErr = e; } /* читаем СВОЙ документ по id (правила разрешают) */
+      if (!st || st.authUid !== user.uid) {
+        console.warn('Диагностика входа:', {uid: user.uid, карточка: st, ошибка: readErr && readErr.code});
+        err.textContent = 'Аккаунт ещё не активирован — попроси учительницу заново задать пароль через ✏️.';
+        await DB.signOut(); $('#lbtn').disabled = false; return;
+      }
       A.session = {role:'student', id, uid: user.uid};
       store.set(SESSION_KEY, A.session);
       start();
