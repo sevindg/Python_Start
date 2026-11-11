@@ -41,51 +41,70 @@ const TRACKERS = [
 <style>
 :root{
   --bg:#eef3f9; --card:#fff; --ink:#1e2a45; --muted:#7a869f; --line:#e3e9f2;
+  --soft:#f3f5fa; --soft-h:#f7f9fc; --off:#f1f3f7; --off-line:#e4e8ef; --off-ink:#9aa4b6;
+  --sub:#4b5774; --bar-bg:#eef2f8; --body2:#fbfcfe; --code-ink:#8a5a00;
   --green:#12b886; --green-d:#0c9a70; --green-l:#e6f8f1;
   --yellow:#ffc53d; --yellow-l:#fff6dc; --purple:#7c4dff; --purple-l:#f1ebff;
   --red:#f03e3e; --red-l:#fff0f0; --blue:#3b82f6; --blue-l:#eaf2ff; --gray:#c3cbd8;
+  --shadow:0 2px 0 rgba(30,42,69,.04),0 8px 24px rgba(30,42,69,.06);
+  --toast-bg:#1e2a45; --toast-ink:#fff; --overlay:rgba(30,42,69,.5);
+  --login-bg:radial-gradient(circle at 20% 10%,#d3f9d8 0,transparent 40%),radial-gradient(circle at 90% 90%,#e5dbff 0,transparent 40%),var(--bg);
+  color-scheme:light;
+}
+/* ===== ТЁМНАЯ ТЕМА (включается кнопкой 🌙/☀️) ===== */
+html[data-theme="dark"]{
+  --bg:#0e1524; --card:#182136; --ink:#e9eef8; --muted:#8e9ab3; --line:#2b3652;
+  --soft:#232e49; --soft-h:#2a3757; --off:#1e2740; --off-line:#2c3854; --off-ink:#66738f;
+  --sub:#a9b4cc; --bar-bg:#232e49; --body2:#1f2942; --code-ink:#ffd43b;
+  --green:#12b886; --green-d:#38d9a9; --green-l:#14332a;
+  --yellow:#ffc53d; --yellow-l:#3a2f0e; --purple:#9775fa; --purple-l:#2a2350;
+  --red:#ff6b6b; --red-l:#3b1d20; --blue:#4dabf7; --blue-l:#1b2b4a; --gray:#4a5568;
+  --shadow:0 2px 0 rgba(0,0,0,.25),0 8px 24px rgba(0,0,0,.4);
+  --toast-bg:#e9eef8; --toast-ink:#16203a; --overlay:rgba(4,8,18,.65);
+  --login-bg:radial-gradient(circle at 20% 10%,rgba(32,201,151,.14) 0,transparent 40%),radial-gradient(circle at 90% 90%,rgba(124,77,255,.16) 0,transparent 40%),var(--bg);
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
-body{font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+body{font-family:Nunito,system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;transition:background .25s,color .25s}
 button,input,select{font-family:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
 .muted{color:var(--muted)}
-.card{background:var(--card);border-radius:20px;box-shadow:0 2px 0 rgba(30,42,69,.04),0 8px 24px rgba(30,42,69,.06)}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow)}
 
 /* header */
-.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
 .brand{display:flex;align-items:center;gap:12px;margin-right:auto}
 .logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#20c997,#0ca678);display:grid;place-items:center;box-shadow:0 4px 12px rgba(18,184,134,.35);font-size:24px}
 .brand b{font-size:20px;font-weight:900;display:block}
 .brand span{font-size:12.5px;color:var(--muted)}
-.who{display:flex;align-items:center;gap:8px;background:#f3f5fa;border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px;font-weight:800;font-size:14px}
+.who{display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 5px;font-weight:800;font-size:14px}
 .who i{width:30px;height:30px;border-radius:50%;background:var(--yellow);display:grid;place-items:center;font-style:normal}
-.pill{border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:12px;font-weight:800;font-size:14px;color:var(--ink);white-space:nowrap}
-.pill:hover{background:#f7f9fc}
+.pill{border:1px solid var(--line);background:var(--card);padding:9px 14px;border-radius:12px;font-weight:800;font-size:14px;color:var(--ink);white-space:nowrap}
+.pill:hover{background:var(--soft-h)}
 .pill.on{background:var(--yellow);border-color:#f5b400;color:#3a2a00}
 main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
 .btn{border:0;border-radius:14px;padding:13px 20px;font-weight:900;font-size:15.5px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.15s;text-decoration:none}
 .btn:active{transform:translateY(1px)}
 .btn.green{background:linear-gradient(180deg,#20c997,#0ca678);color:#fff;box-shadow:0 4px 0 #087f5b}
 .btn.purple{background:linear-gradient(180deg,#9775fa,#7048e8);color:#fff;box-shadow:0 4px 0 #5f3dc4}
-.btn.white{background:#fff;color:var(--ink);border:2px solid var(--line)}
+.btn.white{background:var(--card);color:var(--ink);border:2px solid var(--line)}
 .btn.red{background:var(--red-l);color:var(--red);border:1px solid #ffc9c9}
 .btn:hover{filter:brightness(1.04)}
 .btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
 .banner{display:flex;gap:12px;align-items:flex-start;background:var(--yellow-l);border:1px solid #ffe08a;border-radius:16px;padding:12px 16px;margin-bottom:18px;font-size:14.5px;line-height:1.45}
 
 /* login */
-.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(circle at 20% 10%,#d3f9d8 0,transparent 40%),radial-gradient(circle at 90% 90%,#e5dbff 0,transparent 40%),var(--bg)}
+.login-wrap{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--login-bg)}
 .login{width:100%;max-width:430px;padding:28px}
 .login h1{margin:10px 0 2px;font-size:26px;text-align:center}
 .login .sub{text-align:center;color:var(--muted);margin-bottom:18px}
-.seg{display:grid;grid-template-columns:1fr 1fr;background:#f3f5fa;border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
-.seg button{border:0;background:transparent;padding:10px;border-radius:11px;font-weight:800;color:#5b6784;font-size:14.5px}
-.seg button.on{background:#fff;color:var(--ink);box-shadow:0 2px 6px rgba(30,42,69,.1)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
+.seg button{border:0;background:transparent;padding:10px;border-radius:11px;font-weight:800;color:var(--sub);font-size:14.5px}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 6px rgba(30,42,69,.1)}
 label.f{display:block;font-weight:800;font-size:13.5px;margin:10px 0 4px}
-.inp{width:100%;font-size:16px;border:2px solid var(--line);border-radius:12px;padding:11px 13px;font-weight:700;color:var(--ink);background:#fff;outline:none}
+.inp{width:100%;font-size:16px;border:2px solid var(--line);border-radius:12px;padding:11px 13px;font-weight:700;color:var(--ink);background:var(--card);outline:none}
 .inp:focus{border-color:#96e2c7}
 .login .btn{width:100%;margin-top:18px}
 .err{color:var(--red);font-weight:800;font-size:14px;margin-top:10px;min-height:20px}
@@ -94,60 +113,60 @@ label.f{display:block;font-weight:800;font-size:13.5px;margin:10px 0 4px}
 /* student */
 .hello{display:flex;align-items:center;gap:18px;padding:20px 22px;margin-bottom:22px;flex-wrap:wrap}
 .hello h2{margin:0;font-size:26px}
-.hello p{margin:4px 0 0;color:#4b5774}
+.hello p{margin:4px 0 0;color:var(--sub)}
 .hello .grow{flex:1;min-width:220px}
-.bar{height:12px;background:#eef2f8;border-radius:9px;overflow:hidden}
+.bar{height:12px;background:var(--bar-bg);border-radius:9px;overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,#20c997,#0ca678);border-radius:9px;transition:width .4s}
 h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
-.tile{position:relative;text-align:left;border:2px solid var(--line);background:#fff;border-radius:18px;padding:14px 14px 16px;min-height:128px;display:flex;flex-direction:column;gap:6px;transition:.15s;color:var(--ink)}
+.tile{position:relative;text-align:left;border:2px solid var(--line);background:var(--card);border-radius:18px;padding:14px 14px 16px;min-height:128px;display:flex;flex-direction:column;gap:6px;transition:.15s;color:var(--ink)}
 .tile .num{width:38px;height:38px;border-radius:12px;background:var(--green-l);color:var(--green-d);display:grid;place-items:center;font-weight:900;font-size:17px}
 .tile .tt{font-weight:800;font-size:15px;line-height:1.25}
 .tile .st{margin-top:auto;font-size:12px;font-weight:900;letter-spacing:.03em;color:var(--green-d)}
 .tile.open:hover{transform:translateY(-2px);border-color:#96e2c7}
 .tile.cur{background:linear-gradient(160deg,#20c997,#0ca678);border-color:transparent;color:#fff;box-shadow:0 6px 0 #087f5b,0 10px 24px rgba(18,184,134,.35)}
-.tile.cur .num{background:#fff;color:var(--green-d)}
+.tile.cur .num{background:#fff;color:#0c9a70}
 .tile.cur .st{color:#fff}
 .tile.cur::after{content:'НОВЫЙ';position:absolute;top:10px;right:10px;background:var(--yellow);color:#3a2a00;font-size:10px;font-weight:900;padding:3px 7px;border-radius:999px;letter-spacing:.06em}
 .tile.sel{outline:4px solid rgba(255,197,61,.8);outline-offset:2px}
-.tile.locked{background:#f1f3f7;border-color:#e4e8ef;color:#9aa4b6;cursor:not-allowed}
-.tile.locked .num{background:#e4e8ef;color:#9aa4b6}
-.tile.locked .st{color:#9aa4b6}
+.tile.locked{background:var(--off);border-color:var(--off-line);color:var(--off-ink);cursor:not-allowed}
+.tile.locked .num{background:var(--off-line);color:var(--off-ink)}
+.tile.locked .st{color:var(--off-ink)}
 .tile .lock{position:absolute;top:12px;right:12px;font-size:18px;filter:grayscale(1);opacity:.7}
-.panel{grid-column:1/-1;background:#fff;border:2px solid #b2ecd9;border-radius:20px;padding:18px 20px;animation:slide .28s ease-out;box-shadow:0 10px 30px rgba(18,184,134,.12)}
+.panel{grid-column:1/-1;background:var(--card);border:2px solid #b2ecd9;border-radius:20px;padding:18px 20px;animation:slide .28s ease-out;box-shadow:0 10px 30px rgba(18,184,134,.12)}
 @keyframes slide{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 .panel h4{margin:0 0 4px;font-size:20px}
 .panel .acts{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px}
 .panel .btn{min-width:200px}
 .prog{background:rgba(255,255,255,.25);border-radius:8px;padding:2px 8px;font-size:13px}
 .btn.white .prog,.btn.disabled .prog{background:var(--green-l);color:var(--green-d)}
-.soon{border:2px dashed var(--line);color:var(--muted);background:#fafbfd;box-shadow:none;cursor:default}
+.soon{border:2px dashed var(--line);color:var(--muted);background:var(--body2);box-shadow:none;cursor:default}
 
 /* teacher */
 .tbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 18px;margin-bottom:18px}
-.stat{background:#f6f8fc;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-weight:800;font-size:14px}
+.stat{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-weight:800;font-size:14px}
 .stat b{color:var(--green-d)}
 .save-st{font-size:13px;font-weight:800;color:var(--muted);margin-left:auto}
 .lrow{margin-bottom:10px;overflow:hidden}
 .lhead{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;flex-wrap:wrap}
-.lhead .num{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:900;background:#e4e8ef;color:#7a869f;flex:none}
+.lhead .num{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-weight:900;background:var(--off-line);color:var(--muted);flex:none}
 .lrow.isopen .lhead .num{background:var(--green-l);color:var(--green-d)}
 .lrow.iscur .lhead .num{background:var(--green);color:#fff}
 .lhead .tt{font-weight:800;font-size:16px;flex:1;min-width:160px}
 .badge{font-size:11.5px;font-weight:900;padding:4px 9px;border-radius:999px;letter-spacing:.03em;white-space:nowrap}
 .b-open{background:var(--green-l);color:var(--green-d);border:1px solid #b2ecd9}
-.b-lock{background:#f1f3f7;color:#7a869f;border:1px solid var(--line)}
+.b-lock{background:var(--off);color:var(--muted);border:1px solid var(--line)}
 .b-cur{background:var(--yellow);color:#3a2a00}
-.tog{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-weight:800;font-size:13px;color:#4b5774;white-space:nowrap}
-.tog:hover{background:#f7f9fc}
+.tog{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 11px;font-weight:800;font-size:13px;color:var(--sub);white-space:nowrap}
+.tog:hover{background:var(--soft-h)}
 .chev{transition:.2s;color:var(--muted);font-size:14px}
 .lrow.exp .chev{transform:rotate(180deg)}
-.lbody{border-top:1px solid var(--line);padding:14px 16px 16px;background:#fbfcfe}
+.lbody{border-top:1px solid var(--line);padding:14px 16px 16px;background:var(--body2)}
 .brow{display:grid;grid-template-columns:150px 1fr 1.6fr auto auto;gap:8px;align-items:center;margin-bottom:8px}
 .brow .inp,.lbody .inp{font-size:14px;padding:8px 10px;border-radius:10px}
-.brow select{font-size:14px;padding:8px;border:2px solid var(--line);border-radius:10px;background:#fff;font-weight:700;color:var(--ink)}
-.icob{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;display:grid;place-items:center;font-size:15px;text-decoration:none;color:var(--ink)}
-.icob:hover{background:#f7f9fc}
+.brow select{font-size:14px;padding:8px;border:2px solid var(--line);border-radius:10px;background:var(--card);font-weight:700;color:var(--ink)}
+.icob{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;font-size:15px;text-decoration:none;color:var(--ink)}
+.icob:hover{background:var(--soft-h)}
 .icob.del:hover{background:var(--red-l);border-color:#ffc9c9}
 .icob.edit:hover{background:var(--blue-l);border-color:#93c5fd}
 .icob.off{opacity:.35;pointer-events:none}
@@ -159,10 +178,10 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .srow:last-child{border-bottom:0}
 .srow.h{font-size:12px;font-weight:900;color:var(--muted);letter-spacing:.04em;padding-top:14px;padding-bottom:10px}
 .sname{font-weight:800;font-size:15.5px}
-.spass{font-size:13px;color:#4b5774;margin-top:2px}
-.spass code{background:var(--yellow-l);border:1px solid #ffe08a;border-radius:6px;padding:1px 6px;font-weight:800;color:#8a5a00;font-family:ui-monospace,Consolas,monospace}
+.spass{font-size:13px;color:var(--sub);margin-top:2px}
+.spass code{background:var(--yellow-l);border:1px solid #ffe08a;border-radius:6px;padding:1px 6px;font-weight:800;color:var(--code-ink);font-family:ui-monospace,Consolas,monospace}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.chip{font-size:11.5px;font-weight:800;background:#f3f5fa;border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#4b5774}
+.chip{font-size:11.5px;font-weight:800;background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:var(--sub)}
 .chip.done{background:var(--green-l);border-color:#b2ecd9;color:var(--green-d)}
 .pct{font-weight:900;font-size:13px;color:var(--green-d);margin-bottom:4px}
 .seen{font-size:12.5px;color:var(--muted)}
@@ -171,21 +190,55 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
 .sactions{display:flex;gap:6px;justify-content:flex-end}
 
 /* Modal */
-.modal-overlay{position:fixed;inset:0;background:rgba(30,42,69,.5);backdrop-filter:blur(4px);z-index:50;display:grid;place-items:center;padding:20px;animation:fadein .2s}
+.modal-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);z-index:50;display:grid;place-items:center;padding:20px;animation:fadein .2s}
 @keyframes fadein{from{opacity:0}to{opacity:1}}
-.modal{background:#fff;border-radius:22px;padding:26px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slide .25s ease-out}
+.modal{background:var(--card);border-radius:22px;padding:26px;width:100%;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:slide .25s ease-out}
 .modal h3{margin:0 0 4px;font-size:22px;display:flex;align-items:center;gap:10px}
 .modal .msub{color:var(--muted);font-size:14px;margin-bottom:16px}
 .modal .actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
 .modal .actions .btn{flex:1;min-width:120px}
-.modal .genbtn{border:1px solid var(--line);background:#f7f9fc;border-radius:10px;padding:6px 10px;font-weight:800;font-size:12px;color:#4b5774;white-space:nowrap}
-.modal .genbtn:hover{background:#eef2f8}
+.modal .genbtn{border:1px solid var(--line);background:var(--soft-h);border-radius:10px;padding:6px 10px;font-weight:800;font-size:12px;color:var(--sub);white-space:nowrap}
+.modal .genbtn:hover{background:var(--soft)}
 .pw-field{display:flex;gap:6px;align-items:stretch}
 .pw-field .inp{flex:1}
 
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#1e2a45;color:#fff;padding:12px 18px;border-radius:14px;font-weight:800;z-index:70;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slide .25s}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--toast-bg);color:var(--toast-ink);padding:12px 18px;border-radius:14px;font-weight:800;z-index:70;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:slide .25s}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:60}
 .loading{min-height:60vh;display:grid;place-items:center;color:var(--muted);font-weight:800}
+
+/* chat */
+.chat-fab{position:fixed;right:20px;bottom:20px;width:58px;height:58px;border-radius:50%;border:0;background:linear-gradient(180deg,#20c997,#0ca678);color:#fff;font-size:25px;box-shadow:0 4px 0 #087f5b,0 10px 24px rgba(18,184,134,.4);z-index:40;display:grid;place-items:center;cursor:pointer}
+.chat-fab:hover{filter:brightness(1.05)}
+.chat-fab:active{transform:translateY(1px)}
+.chat-badge{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;border-radius:999px;background:var(--red);color:#fff;font-size:12px;font-weight:900;display:grid;place-items:center;padding:0 6px;border:2px solid var(--card)}
+.chat-panel{position:fixed;right:20px;bottom:92px;width:min(360px,calc(100vw - 24px));height:min(480px,calc(100vh - 130px));background:var(--card);border-radius:20px;box-shadow:var(--shadow),0 20px 50px rgba(0,0,0,.25);z-index:41;display:flex;flex-direction:column;overflow:hidden;animation:slide .22s ease-out}
+.chat-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);font-weight:900;font-size:15px;flex:none}
+.chat-head .back{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:4px 9px;font-weight:900;font-size:13px;color:var(--sub);cursor:pointer}
+.chat-head .back:hover{background:var(--soft-h)}
+.chat-head .x{margin-left:auto;border:0;background:transparent;font-size:16px;color:var(--muted);cursor:pointer;padding:2px 4px}
+.chat-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--body2)}
+.msg{max-width:82%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.4;word-break:break-word}
+.msg .mt{display:block;font-size:10.5px;opacity:.6;margin-top:2px;font-weight:800}
+.msg.me{align-self:flex-end;background:var(--green);color:#fff;border-bottom-right-radius:4px}
+.msg.them{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:4px}
+.chat-list{flex:1;overflow-y:auto}
+.chat-srow{display:flex;gap:10px;align-items:center;padding:11px 14px;border:0;border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:transparent;font-family:inherit}
+.chat-srow:hover{background:var(--soft-h)}
+.chat-srow i{width:38px;height:38px;border-radius:50%;background:var(--soft);display:grid;place-items:center;font-style:normal;font-size:18px;flex:none}
+.chat-srow .nm{font-weight:800;font-size:14px;color:var(--ink)}
+.chat-srow .pv{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;display:inline-block;vertical-align:bottom}
+.chat-srow .tm{margin-left:auto;text-align:right;font-size:11.5px;color:var(--muted);flex:none}
+.chat-srow .cnt{display:inline-block;margin-top:3px;background:var(--red);color:#fff;border-radius:999px;font-size:11px;font-weight:900;padding:1px 7px}
+.chat-empty{padding:30px 18px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.5}
+.chat-inp-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--card);flex:none}
+.chat-inp{flex:1;font-size:14px;border:2px solid var(--line);border-radius:12px;padding:9px 12px;font-weight:700;color:var(--ink);background:var(--card);outline:none;min-width:0}
+.chat-inp:focus{border-color:#96e2c7}
+.chat-send{border:0;border-radius:12px;padding:0 16px;font-weight:900;font-size:15px;background:linear-gradient(180deg,#20c997,#0ca678);color:#fff;box-shadow:0 3px 0 #087f5b;cursor:pointer}
+.chat-send:disabled{opacity:.5;cursor:not-allowed}
+@media (max-width:560px){
+  .chat-fab{right:14px;bottom:14px}
+  .chat-panel{right:12px;left:12px;width:auto;bottom:84px}
+}
 
 @media (max-width:800px){
   .brow{grid-template-columns:1fr 1fr;}
@@ -204,10 +257,19 @@ h3.sec{font-size:19px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
   .panel .btn{min-width:0;width:100%}
 }
 </style>
+<script>
+/* Тема оформления: применяем ДО отрисовки страницы, чтобы не было вспышки светлой темы */
+try {
+  var _t = JSON.parse(localStorage.getItem('lms_theme_v1'));
+  if (_t !== 'dark' && _t !== 'light') _t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.dataset.theme = _t;
+} catch (e) { document.documentElement.dataset.theme = 'light'; }
+</script>
 </head>
 <body>
 <div id="app"><div class="loading">Загрузка…</div></div>
 <canvas id="confetti"></canvas>
+<div id="chatRoot"></div>
 
 <script>
 "use strict";
@@ -219,6 +281,39 @@ const store = {
   set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
   del(k){ try { localStorage.removeItem(k); } catch (e) {} }
 };
+
+/* ======================================================================
+   ТЕМА ОФОРМЛЕНИЯ (светлая / тёмная) — кнопка 🌙/☀️
+   У ученика выбор синхронизируется с его аккаунтом в Firebase (поле theme)
+   и применяется при входе с любого устройства. У учителя и на экране входа
+   аккаунта в базе нет — там тема хранится локально в браузере.
+   ====================================================================== */
+const THEME_KEY = 'lms_theme_v1';
+const themeIcon = () => document.documentElement.dataset.theme === 'dark' ? '☀️' : '🌙';
+const curTheme = () => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+function syncThemeBtn(){ const b = $('#themeBtn'); if (b) b.textContent = themeIcon(); }
+function applyTheme(t){ document.documentElement.dataset.theme = t; store.set(THEME_KEY, t); syncThemeBtn(); }
+function toggleTheme(){
+  const next = curTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  A.themeTouched = true;
+  /* ученик — сохраняем тему в аккаунт; учитель/экран входа — только локально */
+  if (A && A.session && A.session.role === 'student' && A.me && A.session.id) {
+    DB.setStudent(A.session.id, {theme: next}).catch(() => {});
+  }
+}
+/* Тема из аккаунта: применяется при входе и синхронизируется,
+   если её сменили на другом устройстве */
+function accountTheme(me){
+  const rt = me && (me.theme === 'dark' || me.theme === 'light') ? me.theme : null;
+  if (!rt || !A.session || A.session.role !== 'student') return;
+  if (A.themeTouched) {
+    /* здесь тему уже выбирали — продвигаем свой вариант, если сервер отстаёт */
+    if (rt !== curTheme()) DB.setStudent(A.session.id, {theme: curTheme()}).catch(() => {});
+  } else if (rt !== curTheme()) {
+    applyTheme(rt);
+  }
+}
 
 /* ======================================================================
    УРОКИ ПО УМОЛЧАНИЮ
@@ -258,10 +353,10 @@ function normalizeConfig(c){
    БАЗА ДАННЫХ: Firebase или демо (localStorage)
    ====================================================================== */
 function makeLocalDB(){
-  const CK = 'lms_demo_config', SK = 'lms_demo_students';
-  const subs = {config:new Set(), students:new Set()};
-  const fire = () => { subs.config.forEach(cb => cb(store.get(CK, null))); const s = store.get(SK, {}); subs.students.forEach(cb => cb(Object.entries(s).map(([id, v]) => ({id, ...v})))); };
-  window.addEventListener('storage', e => { if (e.key === CK || e.key === SK) fire(); });
+  const CK = 'lms_demo_config', SK = 'lms_demo_students', CH = 'lms_demo_chats';
+  const subs = {config:new Set(), students:new Set(), chats:new Set()};
+  const fire = () => { subs.config.forEach(cb => cb(store.get(CK, null))); const s = store.get(SK, {}); subs.students.forEach(cb => cb(Object.entries(s).map(([id, v]) => ({id, ...v})))); const c = store.get(CH, {}); subs.chats.forEach(cb => cb(c)); };
+  window.addEventListener('storage', e => { if (e.key === CK || e.key === SK || e.key === CH) fire(); });
   return {
     demo: true,
     async getConfig(){ return store.get(CK, null); },
@@ -269,14 +364,19 @@ function makeLocalDB(){
     onConfig(cb){ subs.config.add(cb); cb(store.get(CK, null)); return () => subs.config.delete(cb); },
     async getStudent(id){ return store.get(SK, {})[id] || null; },
     async setStudent(id, data){ const s = store.get(SK, {}); s[id] = Object.assign(s[id] || {}, data); store.set(SK, s); fire(); },
-    async deleteStudent(id){ const s = store.get(SK, {}); delete s[id]; store.set(SK, s); fire(); },
-    onStudents(cb){ subs.students.add(cb); const s = store.get(SK, {}); cb(Object.entries(s).map(([id, v]) => ({id, ...v}))); return () => subs.students.delete(cb); }
+    async deleteStudent(id){ const s = store.get(SK, {}); delete s[id]; store.set(SK, s); const c = store.get(CH, {}); if (c[id]) { delete c[id]; store.set(CH, c); } fire(); },
+    onStudents(cb){ subs.students.add(cb); const s = store.get(SK, {}); cb(Object.entries(s).map(([id, v]) => ({id, ...v}))); return () => subs.students.delete(cb); },
+    async sendMsg(sid, msg){ const c = store.get(CH, {}); const t = c[sid] || {}; t.messages = (t.messages || []).concat([msg]); c[sid] = t; store.set(CH, c); fire(); },
+    async markRead(sid, who, at){ const c = store.get(CH, {}); const t = c[sid] || {}; t[who + 'Read'] = at || Date.now(); c[sid] = t; store.set(CH, c); fire(); },
+    onChats(cb){ subs.chats.add(cb); cb(store.get(CH, {})); return () => subs.chats.delete(cb); },
+    onChat(sid, cb){ return this.onChats(c => cb(c[sid] || null)); },
+    async moveChat(oldId, newId){ const c = store.get(CH, {}); if (c[oldId]) { c[newId] = c[oldId]; delete c[oldId]; store.set(CH, c); fire(); } }
   };
 }
 function makeFirebaseDB(){
   firebase.initializeApp(FIREBASE_CONFIG);
   const db = firebase.firestore();
-  const cfgRef = db.collection('lms').doc('config'), st = db.collection('students');
+  const cfgRef = db.collection('lms').doc('config'), st = db.collection('students'), ch = db.collection('chats');
   return {
     demo: false,
     async getConfig(){ const s = await cfgRef.get(); return s.exists ? s.data() : null; },
@@ -284,8 +384,13 @@ function makeFirebaseDB(){
     onConfig(cb){ return cfgRef.onSnapshot(s => cb(s.exists ? s.data() : null), e => toast('Нет связи с базой: ' + e.message)); },
     async getStudent(id){ const s = await st.doc(id).get(); return s.exists ? s.data() : null; },
     async setStudent(id, data){ await st.doc(id).set(JSON.parse(JSON.stringify(data)), {merge:true}); },
-    async deleteStudent(id){ await st.doc(id).delete(); },
-    onStudents(cb){ return st.onSnapshot(q => cb(q.docs.map(d => ({id:d.id, ...d.data()}))), e => toast('Нет связи с базой: ' + e.message)); }
+    async deleteStudent(id){ await st.doc(id).delete(); ch.doc(id).delete().catch(() => {}); },
+    onStudents(cb){ return st.onSnapshot(q => cb(q.docs.map(d => ({id:d.id, ...d.data()}))), e => toast('Нет связи с базой: ' + e.message)); },
+    async sendMsg(sid, msg){ await ch.doc(sid).set({messages: firebase.firestore.FieldValue.arrayUnion(JSON.parse(JSON.stringify(msg)))}, {merge:true}); },
+    async markRead(sid, who, at){ const v = {}; v[who + 'Read'] = at || Date.now(); await ch.doc(sid).set(v, {merge:true}); },
+    onChats(cb){ return ch.onSnapshot(q => { const m = {}; q.docs.forEach(d => m[d.id] = d.data()); cb(m); }, e => toast('Нет связи с чатом: ' + e.message)); },
+    onChat(sid, cb){ return ch.doc(sid).onSnapshot(d => cb(d.exists ? d.data() : null), e => toast('Нет связи с чатом: ' + e.message)); },
+    async moveChat(oldId, newId){ const d = await ch.doc(oldId).get(); if (!d.exists) return; await ch.doc(newId).set(d.data()); await ch.doc(oldId).delete().catch(() => {}); }
   };
 }
 let DB;
@@ -341,10 +446,21 @@ const A = {
   session: store.get(SESSION_KEY, null),
   cfg: null, me: null, students: [],
   view: 'lessons', sel: null, exp: {}, search: '',
-  unsub: [], dirty: false, saveTimer: 0, openCount: null
+  unsub: [], dirty: false, saveTimer: 0, openCount: null, chatData: null,
+  themeTouched: false /* менял ли тему на этой странице (для синхронизации с аккаунтом) */
 };
 const studentId = (last, first) => (last.trim() + '_' + first.trim()).toLowerCase().replace(/ё/g, 'е').replace(/[\s/\\.#$\[\]]+/g, '_');
 const cap = s => s.trim().replace(/\s+/g, ' ').replace(/(^|[\s-])(\S)/g, (m, a, b) => a + b.toUpperCase());
+
+/* ===== Пароли: храним только SHA-256-хеш, сам пароль в базе не лежит ===== */
+async function hashPw(pw){
+  const data = new TextEncoder().encode('pystart::v1:' + pw);
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch (e) { return 'plain:' + pw; } /* нет crypto.subtle (старый браузер) — пароль мигрирует в хеш позже */
+}
+const isHash = s => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
 
 function toast(msg){
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
@@ -362,7 +478,7 @@ function confetti(){
   })();
 }
 function stopSubs(){ A.unsub.forEach(u => { try { u(); } catch (e) {} }); A.unsub = []; }
-function logout(){ stopSubs(); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; renderLogin(); }
+function logout(){ stopSubs(); store.del(SESSION_KEY); A.session = null; A.me = null; A.cfg = null; A.openCount = null; A.sel = null; A.chatData = null; chatS.open = false; chatS.sid = null; chatS.drafts = {}; renderChat(); renderLogin(); }
 
 /* ======================================================================
    ВХОД
@@ -370,6 +486,7 @@ function logout(){ stopSubs(); store.del(SESSION_KEY); A.session = null; A.me = 
 let loginRole = 'student';
 function renderLogin(){
   $('#app').innerHTML = `
+  <button class="pill" id="themeBtn" title="Светлая/тёмная тема" style="position:fixed;top:14px;right:14px;z-index:30">${themeIcon()}</button>
   <div class="login-wrap"><div class="card login">
     <div style="text-align:center;font-size:54px">🐍</div>
     <h1>Python Start</h1>
@@ -389,6 +506,7 @@ function renderLogin(){
       <button class="btn green" type="submit" id="lbtn">Войти →</button>
     </form>
   </div></div>`;
+  $('#themeBtn').onclick = toggleTheme;
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { loginRole = b.dataset.role; renderLogin(); });
   $('#lf').onsubmit = async e => {
     e.preventDefault();
@@ -405,8 +523,13 @@ function renderLogin(){
     $('#lbtn').disabled = true;
     try {
       const id = studentId(last, first), st = await DB.getStudent(id);
-      if (st && st.password !== pw) { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
-      if (!st) await DB.setStudent(id, {last, first, password:pw, created:Date.now(), lastSeen:Date.now(), progress:{}});
+      if (st) {
+        const ok = isHash(st.password) ? (await hashPw(pw)) === st.password : st.password === pw;
+        if (!ok) { err.textContent = 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
+        if (!isHash(st.password)) DB.setStudent(id, {password: await hashPw(pw)}).catch(() => {}); /* старый пароль мигрирует в хеш при первом входе */
+      } else {
+        await DB.setStudent(id, {last, first, password: await hashPw(pw), created:Date.now(), lastSeen:Date.now(), progress:{}});
+      }
       A.session = {role:'student', id}; store.set(SESSION_KEY, A.session);
       if (!st) toast(`Добро пожаловать, ${first}! Аккаунт создан 🎉`);
       start();
@@ -424,11 +547,13 @@ function header(){
     <div class="brand"><div class="logo">🐍</div><div><b>Python Start</b><span>Школа юных программистов</span></div></div>
     ${t ? `<button class="pill ${A.view === 'students' ? 'on' : ''}" id="toggleStudents">👥 Список учеников</button>` : ''}
     <div class="who"><i>${t ? '🧑‍🏫' : '🎒'}</i>${esc(name)}</div>
+    <button class="pill" id="themeBtn" title="Светлая/тёмная тема">${themeIcon()}</button>
     <button class="pill" id="logout">Выйти</button>
   </header>`;
 }
 function bindHeader(){
   $('#logout').onclick = () => { if (confirm('Выйти из аккаунта?')) logout(); };
+  const tb = $('#themeBtn'); if (tb) tb.onclick = toggleTheme;
   const ts = $('#toggleStudents');
   if (ts) ts.onclick = () => { A.view = A.view === 'students' ? 'lessons' : 'students'; renderTeacher(); };
 }
@@ -623,12 +748,12 @@ function studentsView(){
       <button class="pill" id="backLessons">← К урокам</button>
     </div>
     <div class="card slist">
-      ${list.length ? `<div class="srow h"><span class="n">№</span><span>УЧЕНИК / ПАРОЛЬ</span><span>ПРОГРЕСС ПО ОТКРЫТЫМ УРОКАМ</span><span>БЫЛ НА САЙТЕ</span><span></span></div>` : ''}
+      ${list.length ? `<div class="srow h"><span class="n">№</span><span>УЧЕНИК</span><span>ПРОГРЕСС ПО ОТКРЫТЫМ УРОКАМ</span><span>БЫЛ НА САЙТЕ</span><span></span></div>` : ''}
       ${list.map((s, k) => {
         const st = studentStats(s, A.cfg);
         return `<div class="srow" data-id="${esc(s.id)}">
           <span class="n muted" style="font-weight:900">${k + 1}</span>
-          <div><div class="sname">${esc(s.last)} ${esc(s.first)}</div><div class="spass">пароль: <code>${esc(s.password)}</code></div></div>
+          <div><div class="sname">${esc(s.last)} ${esc(s.first)}</div><div class="spass">пароль скрыт 🔒</div></div>
           <div><div class="pct">${st.pct}%</div><div class="bar"><i style="width:${st.pct}%"></i></div>
             <div class="chips">${st.items.map(it => `<span class="chip ${it.frac >= 1 ? 'done' : ''}" title="Урок ${it.li + 1}">У${it.li + 1} · ${esc(it.label)}: ${esc(it.text)}</span>`).join('')}</div></div>
           <span class="seen">${fmtSeen(s.lastSeen)}</span>
@@ -673,7 +798,7 @@ function openEditStudentModal(st){
   overlay.innerHTML = `
     <div class="modal" role="dialog" aria-modal="true">
       <h3>✏️ Данные ученика</h3>
-      <div class="msub">Измени фамилию, имя и/или пароль. Ученик входит по фамилии+имени, поэтому при их изменении изменится и его «логин» на сайте.</div>
+      <div class="msub">Измени фамилию, имя и/или пароль. Ученик входит по фамилии+имени, поэтому при их изменении изменится и его «логин» на сайте. Пароли хранятся в виде хеша, поэтому текущий пароль не показывается: если ученик забыл пароль — просто задай новый.</div>
 
       <label class="f" for="mLast">Фамилия</label>
       <input class="inp" id="mLast" value="${esc(st.last)}" maxlength="40" placeholder="Иванов">
@@ -681,9 +806,9 @@ function openEditStudentModal(st){
       <label class="f" for="mFirst">Имя</label>
       <input class="inp" id="mFirst" value="${esc(st.first)}" maxlength="40" placeholder="Иван">
 
-      <label class="f" for="mPass">Пароль</label>
+      <label class="f" for="mPass">Новый пароль</label>
       <div class="pw-field">
-        <input class="inp" id="mPass" value="${esc(st.password)}" maxlength="40">
+        <input class="inp" id="mPass" value="" placeholder="пусто — не менять пароль" maxlength="40" autocomplete="new-password">
         <button type="button" class="genbtn" id="mGenPass" title="Сгенерировать новый пароль">🎲 новый</button>
       </div>
 
@@ -711,11 +836,11 @@ function openEditStudentModal(st){
     const newPass = overlay.querySelector('#mPass').value;
 
     if (!newLast || !newFirst) { err.textContent = 'Фамилия и имя не могут быть пустыми'; return; }
-    if (!newPass || newPass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
+    if (newPass && newPass.length < 4) { err.textContent = 'Пароль должен быть не короче 4 символов'; return; }
 
     const newId = studentId(newLast, newFirst);
     const idChanged = newId !== st.id;
-    const passChanged = newPass !== st.password;
+    const passChanged = !!newPass; /* пустое поле = пароль не меняем */
     const nameChanged = newLast !== st.last || newFirst !== st.first;
 
     /* Проверка: если ФИО изменились — нет ли уже такого ученика */
@@ -726,15 +851,17 @@ function openEditStudentModal(st){
 
     if (!idChanged && !passChanged && !nameChanged) { close(); return; }
 
+    const newPassHash = passChanged ? await hashPw(newPass) : st.password;
     const saveBtn = overlay.querySelector('#mSave');
     saveBtn.disabled = true; saveBtn.textContent = 'Сохраняю…';
 
     try {
       if (idChanged) {
         /* Переносим запись на новый id */
-        const data = Object.assign({}, st, {last: newLast, first: newFirst, password: newPass});
+        const data = Object.assign({}, st, {last: newLast, first: newFirst, password: newPassHash});
         delete data.id;
         await DB.setStudent(newId, data);
+        await DB.moveChat(st.id, newId); /* переносим переписку на новый id, чтобы история не потерялась */
         await DB.deleteStudent(st.id);
         /* Если текущая сессия — этот ученик, обновляем id в сессии */
         if (A.session && A.session.role === 'student' && A.session.id === st.id) {
@@ -742,7 +869,7 @@ function openEditStudentModal(st){
         }
         toast('Данные ученика обновлены ✅');
       } else {
-        await DB.setStudent(st.id, {last: newLast, first: newFirst, password: newPass});
+        await DB.setStudent(st.id, {last: newLast, first: newFirst, password: newPassHash});
         toast('Данные ученика обновлены ✅');
       }
       close();
@@ -756,6 +883,104 @@ function openEditStudentModal(st){
 }
 
 /* ======================================================================
+   ЧАТ (ученик ↔ учитель). Ученик пишет только учителю, учитель — ученикам.
+   Переписка учеников между собой технически невозможна: каждый ученик
+   пишет только в свой диалог chats/{его id}.
+   ====================================================================== */
+const chatS = { open: false, sid: null, drafts: {}, keepFocus: false, wasNearBottom: true };
+const lastChatAt = sid => { const ms = chatMsgs(sid); return ms.length ? ms[ms.length - 1].at : 0; };
+function chatThread(sid){ return (A.chatData || {})[sid] || null; }
+function chatMsgs(sid){ const t = chatThread(sid); return t && Array.isArray(t.messages) ? t.messages.slice().sort((a, b) => a.at - b.at) : []; }
+function chatUnread(sid, who){ /* who: 's' — непрочитанное учеником, 't' — учителем */
+  const t = chatThread(sid), r = (t && (who === 's' ? t.sRead : t.tRead)) || 0;
+  return chatMsgs(sid).filter(m => m.from !== who && m.at > r).length;
+}
+const fmtChatTime = t => new Date(t).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+
+function renderChat(){
+  const root = $('#chatRoot'); if (!root) return;
+  if (!A.session) { root.innerHTML = ''; return; }
+  const teacher = A.session.role === 'teacher';
+  /* запоминаем состояние ПЕРЕД перерисовкой: фокус в поле ввода и позицию скролла */
+  chatS.keepFocus = !!(document.activeElement && document.activeElement.id === 'chatInp');
+  const oldBox = $('#chatMsgs');
+  chatS.wasNearBottom = !oldBox || oldBox.scrollHeight - oldBox.scrollTop - oldBox.clientHeight < 60;
+  /* если выбранный ученик удалён — возвращаемся к списку диалогов */
+  if (teacher && chatS.sid && !A.students.some(x => x.id === chatS.sid)) chatS.sid = null;
+  const unread = teacher ? A.students.reduce((s, x) => s + chatUnread(x.id, 't'), 0) : chatUnread(A.session.id, 's');
+  root.innerHTML = `${chatS.open ? chatPanelHTML(teacher) : ''}
+    <button class="chat-fab" id="chatFab" title="Чат с ${teacher ? 'учениками' : 'учителем'}">${chatS.open ? '✕' : '💬'}${unread && !chatS.open ? `<span class="chat-badge">${unread > 99 ? '99+' : unread}</span>` : ''}</button>`;
+  bindChat(teacher);
+}
+function chatPanelHTML(teacher){
+  if (teacher && !chatS.sid) {
+    const list = A.students.slice().sort((a, b) => lastChatAt(b.id) - lastChatAt(a.id));
+    return `<div class="chat-panel">
+      <div class="chat-head">💬 Чат с учениками<span class="x" data-act="close">✕</span></div>
+      <div class="chat-list">
+        ${list.map(s => {
+          const ms = chatMsgs(s.id), last = ms[ms.length - 1], un = chatUnread(s.id, 't');
+          return `<button class="chat-srow" data-sid="${esc(s.id)}"><i>🎒</i>
+            <span style="min-width:0;flex:1"><span class="nm">${esc(s.last)} ${esc(s.first)}</span><br><span class="pv">${last ? esc((last.from === 't' ? 'Вы: ' : '') + last.text) : 'начать переписку'}</span></span>
+            <span class="tm">${last ? fmtSeen(last.at) : ''}${un ? `<br><span class="cnt">${un}</span>` : ''}</span>
+          </button>`;
+        }).join('') || `<div class="chat-empty">Пока ни один ученик не зарегистрировался.</div>`}
+      </div>
+    </div>`;
+  }
+  const sid = teacher ? chatS.sid : A.session.id;
+  const me = teacher ? 't' : 's';
+  const nm = teacher ? (A.students.find(x => x.id === sid) || {last:'', first:''}) : null;
+  return `<div class="chat-panel">
+    <div class="chat-head">${teacher ? `<button class="back" data-act="back">←</button>🎒 ${esc(nm.last)} ${esc(nm.first)}` : '🧑‍🏫 Чат с учителем'}<span class="x" data-act="close">✕</span></div>
+    <div class="chat-body" id="chatMsgs">
+      ${chatMsgs(sid).map(m => `<div class="msg ${m.from === me ? 'me' : 'them'}">${esc(m.text)}<span class="mt">${fmtChatTime(m.at)}</span></div>`).join('') || `<div class="chat-empty">${teacher ? 'Напишите ученику первым — он увидит сообщение в чате.' : 'Здесь можно задать вопрос учителю 🙂'}</div>`}
+    </div>
+    <div class="chat-inp-row">
+      <input class="chat-inp" id="chatInp" maxlength="500" placeholder="Сообщение…" value="${esc(chatS.drafts[sid] || '')}">
+      <button class="chat-send" id="chatSend" title="Отправить">➤</button>
+    </div>
+  </div>`;
+}
+function bindChat(teacher){
+  $('#chatFab').onclick = () => { chatS.open = !chatS.open; if (!chatS.open) chatS.sid = null; renderChat(); };
+  const panel = document.querySelector('.chat-panel'); if (!panel) return;
+  panel.querySelectorAll('[data-act="close"]').forEach(x => x.onclick = () => { chatS.open = false; chatS.sid = null; renderChat(); });
+  panel.querySelectorAll('[data-act="back"]').forEach(x => x.onclick = () => { chatS.sid = null; renderChat(); });
+  panel.querySelectorAll('.chat-srow').forEach(r => r.onclick = () => { chatS.sid = r.dataset.sid; renderChat(); });
+  const inp = $('#chatInp');
+  if (!inp) return;
+  const dlg = teacher ? chatS.sid : A.session.id; /* id диалога — черновик хранится отдельно для каждого */
+  inp.oninput = () => { chatS.drafts[dlg] = inp.value; const b = $('#chatSend'); if (b) b.disabled = !inp.value.trim(); };
+  inp.onkeydown = e => { if (e.key === 'Enter') sendChat(); };
+  const sb = $('#chatSend'); sb.onclick = sendChat; sb.disabled = !inp.value.trim();
+  if (chatS.keepFocus) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  const box = $('#chatMsgs'); if (box && chatS.wasNearBottom) box.scrollTop = box.scrollHeight;
+  markChatRead();
+}
+async function sendChat(){
+  const inp = $('#chatInp'); if (!inp) return;
+  const text = inp.value.trim().slice(0, 500); if (!text) return;
+  const sid = A.session.role === 'teacher' ? chatS.sid : A.session.id; if (!sid) return;
+  const msg = {from: A.session.role === 'teacher' ? 't' : 's', text, at: Date.now()};
+  inp.value = ''; delete chatS.drafts[sid];
+  const sb = $('#chatSend'); if (sb) sb.disabled = true;
+  try { await DB.sendMsg(sid, msg); }
+  catch (e) { toast('Сообщение не отправилось — попробуй ещё раз'); inp.value = text; chatS.drafts[sid] = text; if (sb) sb.disabled = false; }
+}
+function markChatRead(){
+  if (!chatS.open) return;
+  const teacher = A.session.role === 'teacher';
+  const sid = teacher ? chatS.sid : A.session.id;
+  if (!sid) return;
+  const who = teacher ? 't' : 's';
+  const ms = chatMsgs(sid);
+  /* запоминаем время последнего сообщения, а не локальные часы — иначе при
+     расхождении часов устройств «непрочитанное» может никогда не обнулиться */
+  if (ms.length && chatUnread(sid, who) > 0) DB.markRead(sid, who, ms[ms.length - 1].at).catch(() => {});
+}
+
+/* ======================================================================
    ЗАПУСК
    ====================================================================== */
 function start(){
@@ -763,6 +988,9 @@ function start(){
   $('#app').innerHTML = '<div class="loading">Загрузка…</div>';
   const s = A.session;
   if (!s) return renderLogin();
+  /* чат: учитель слушает все диалоги, ученик — только свой (чужие переписки не загружаются) */
+  if (s.role === 'teacher') A.unsub.push(DB.onChats(m => { A.chatData = m || {}; renderChat(); }));
+  else A.unsub.push(DB.onChat(s.id, m => { A.chatData = { [s.id]: m || {} }; renderChat(); }));
   if (s.role === 'teacher') {
     A.view = 'lessons';
     let first = true;
@@ -773,7 +1001,7 @@ function start(){
       first = false;
       if (!teacherEditing()) renderTeacher();
     }));
-    A.unsub.push(DB.onStudents(list => { A.students = list; if (A.cfg && !teacherEditing() && !(A.view === 'students' && document.activeElement && document.activeElement.id === 'search')) renderTeacher(); }));
+    A.unsub.push(DB.onStudents(list => { A.students = list; renderChat(); if (A.cfg && !teacherEditing() && !(A.view === 'students' && document.activeElement && document.activeElement.id === 'search')) renderTeacher(); }));
     return;
   }
   A.unsub.push(DB.onStudents(list => {
@@ -781,6 +1009,7 @@ function start(){
     if (!me) { if (A.me) { toast('Аккаунт удалён учителем'); logout(); } return; }
     const firstLoad = !A.me;
     A.me = me;
+    accountTheme(me); /* подтягиваем тему из аккаунта (или отдаём свою) */
     if (A.cfg) { if (firstLoad) syncProgress(); renderStudent(); }
   }));
   A.unsub.push(DB.onConfig(c => {
