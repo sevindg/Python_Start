@@ -380,8 +380,7 @@ function makeLocalDB(){
     signIn(){ return Promise.reject(new Error('no-auth-in-demo')); },
     signOut(){ return Promise.resolve(); },
     createStudentAccount(){ return Promise.reject(new Error('no-auth-in-demo')); },
-    onStudent(id, cb){ return this.onStudents(list => cb(list.find(x => x.id === id) || null)); },
-    findStudentByUid(){ return Promise.resolve(null); }
+    onStudent(id, cb){ return this.onStudents(list => cb(list.find(x => x.id === id) || null)); }
   };
 }
 function makeFirebaseDB(){
@@ -413,8 +412,7 @@ function makeFirebaseDB(){
       await app2.auth().signOut();
       return cred.user.uid;
     },
-    onStudent(id, cb){ return st.doc(id).onSnapshot(d => cb(d.exists ? {id: d.id, ...d.data()} : null), e => toast('Нет связи с базой: ' + e.message)); },
-    findStudentByUid(uid){ return st.where('authUid', '==', uid).limit(1).get().then(q => q.empty ? null : {id: q.docs[0].id, ...q.docs[0].data()}); }
+    onStudent(id, cb){ return st.doc(id).onSnapshot(d => cb(d.exists ? {id: d.id, ...d.data()} : null), e => toast('Нет связи с базой: ' + e.message)); }
   };
 }
 let DB;
@@ -590,26 +588,27 @@ function renderLogin(){
       catch (x) {
         const c = x && x.code;
         if (c === 'auth/user-not-found' || c === 'auth/invalid-email') { err.textContent = 'Аккаунт ещё не создан — попроси учительницу, она создаст его за минуту.'; $('#lbtn').disabled = false; return; }
-        if (c === 'auth/invalid-credential' || c === 'auth/wrong-password') {
+        if (c === 'auth/invalid-credential' || c === 'auth/wrong-password' || c === 'auth/invalid-login-credentials') {
           /* пароль могли сбрасывать — тогда вход в аккаунте-варианте логина (+2@, +3@…) */
           let limited = false;
           for (let n = 2; n <= 9 && !user; n++) {
             try { user = await DB.signIn(authEmail(id).replace('@', '+' + n + '@'), pw); }
             catch (y) {
               if (y && y.code === 'auth/too-many-requests') { limited = true; break; }
-              if (!(y && (y.code === 'auth/user-not-found' || y.code === 'auth/invalid-credential' || y.code === 'auth/wrong-password'))) throw y;
+              if (!(y && (y.code === 'auth/user-not-found' || y.code === 'auth/invalid-credential' || y.code === 'auth/wrong-password' || y.code === 'auth/invalid-login-credentials'))) throw y;
             }
           }
           if (!user) { err.textContent = limited ? 'Слишком много попыток — подожди пару минут.' : 'Неверный пароль. Если забыл — спроси у учителя.'; $('#lbtn').disabled = false; return; }
         } else if (c === 'auth/too-many-requests') { err.textContent = 'Слишком много попыток — подожди пару минут.'; $('#lbtn').disabled = false; return; }
         else throw x;
       }
-      const st = await DB.findStudentByUid(user.uid);
-      if (!st) { err.textContent = 'Аккаунт ещё не активирован — попроси учительницу.'; await DB.signOut(); $('#lbtn').disabled = false; return; }
-      A.session = {role:'student', id: st.id, uid: user.uid};
+      let st = null;
+      try { st = await DB.getStudent(id); } catch (e) { st = null; } /* читаем СВОЙ документ по id (правила разрешают) */
+      if (!st || st.authUid !== user.uid) { err.textContent = 'Аккаунт ещё не активирован — попроси учительницу.'; await DB.signOut(); $('#lbtn').disabled = false; return; }
+      A.session = {role:'student', id, uid: user.uid};
       store.set(SESSION_KEY, A.session);
       start();
-    } catch (x) { err.textContent = 'Не удалось подключиться к базе. Проверь интернет.'; $('#lbtn').disabled = false; }
+    } catch (x) { console.error('Ошибка входа:', x); err.textContent = 'Не удалось подключиться к базе. Проверь интернет.'; $('#lbtn').disabled = false; }
   };
 }
 
@@ -936,6 +935,11 @@ function openEditStudentModal(st){
       err.textContent = `Ученик ${newLast} ${newFirst} уже существует. Нельзя задать такие же ФИО.`;
       return;
     }
+    /* в Firebase логин аккаунта строится из ФИО — при переименовании нужен и новый пароль */
+    if (!DB.demo && !isNew && hasAuth && idChanged && !newPass) {
+      err.textContent = 'При смене ФИО задай также новый пароль — иначе ученик не сможет войти';
+      return;
+    }
 
     if (!isNew && !idChanged && !passChanged && !nameChanged) { close(); return; }
 
@@ -1150,20 +1154,12 @@ async function start(){
   } else {
     /* Firebase: слушаем ТОЛЬКО свой документ (правила не дают читать чужие) */
     let studentUnsub = null;
-    const subMe = () => {
-      studentUnsub = DB.onStudent(s.id, me => {
-        if (me) return handleMe(me);
-        /* документ пропал — учитель мог переименовать: ищем по аккаунту входа (authUid) */
-        DB.findStudentByUid(s.uid).then(cand => {
-          if (cand) {
-            s.id = cand.id; store.set(SESSION_KEY, s);
-            subStudentChat(s.id); subMe(); /* переподключаемся к новому id */
-            handleMe(cand);
-          } else handleMe(null);
-        }).catch(() => handleMe(null));
-      });
-    };
-    subMe();
+    studentUnsub = DB.onStudent(s.id, me => {
+      if (me) return handleMe(me);
+      /* документ пропал — учитель переименовал или удалил аккаунт: просим войти заново */
+      toast('Учитель обновил твой аккаунт — войди заново');
+      logout();
+    });
     A.unsub.push(() => { if (studentUnsub) studentUnsub(); });
   }
   A.unsub.push(DB.onConfig(c => {
